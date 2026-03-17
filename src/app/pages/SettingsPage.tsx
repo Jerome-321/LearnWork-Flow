@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTaskAPI } from "../hooks/useTaskAPI";
 import { useAuth } from "../contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
@@ -37,10 +37,20 @@ import {
 } from "../components/ui/alert-dialog";
 
 export function SettingsPage() {
-  const { settings, updateSettings } = useTaskAPI();
+  const { settings, updateSettings, notificationSettings, updateNotificationSettings, fetchNotificationSettings } = useTaskAPI();
   const { signOut, user } = useAuth();
   const [displayName, setDisplayName] = useState(settings?.displayName || "");
   const [email, setEmail] = useState(settings?.email || user?.email || "");
+  
+  // ✅ NEW: Local state for notification settings
+  const [localNotifSettings, setLocalNotifSettings] = useState(notificationSettings || null);
+
+  // ✅ NEW: Fetch notification settings on mount
+  useEffect(() => {
+    if (!localNotifSettings && notificationSettings) {
+      setLocalNotifSettings(notificationSettings);
+    }
+  }, [notificationSettings, localNotifSettings]);
 
   const handleSaveProfile = async () => {
     try {
@@ -48,6 +58,17 @@ export function SettingsPage() {
       toast.success("Profile updated successfully");
     } catch (error) {
       toast.error("Failed to update profile");
+    }
+  };
+
+  // ✅ NEW: Handle notification setting changes
+  const handleNotificationSettingChange = async (key: string, value: boolean) => {
+    try {
+      setLocalNotifSettings(prev => prev ? { ...prev, [key]: value } : null);
+      await updateNotificationSettings({ [key]: value });
+      toast.success("Notification settings updated");
+    } catch (error) {
+      toast.error("Failed to update notification settings");
     }
   };
 
@@ -121,7 +142,7 @@ export function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Notifications */}
+          {/* ✅ NEW: Notifications Settings - Connected to Backend */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -133,37 +154,111 @@ export function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Main notifications toggle */}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Push Notifications</Label>
+                  <Label>Notifications Enabled</Label>
                   <p className="text-sm text-muted-foreground">
-                    Receive notifications for upcoming tasks
+                    Turn off to disable all notifications
                   </p>
                 </div>
                 <Switch
-                  checked={settings.notifications}
-                  onCheckedChange={async (checked) => {
-                    try {
-                      await updateSettings({ notifications: checked });
-                      toast.success("Settings updated");
-                    } catch (error) {
-                      toast.error("Failed to update settings");
-                    }
-                  }}
+                  checked={localNotifSettings?.notifications_enabled ?? true}
+                  onCheckedChange={(checked) => 
+                    handleNotificationSettingChange("notifications_enabled", checked)
+                  }
                 />
               </div>
 
               <Separator />
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Daily Reminders</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Get daily summaries of your tasks
-                  </p>
-                </div>
-                <Switch defaultChecked />
-              </div>
+              {/* Notification type toggles - only show if notifications are enabled */}
+              {localNotifSettings?.notifications_enabled && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Task Completed</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Get notified when you complete a task
+                      </p>
+                    </div>
+                    <Switch
+                      checked={localNotifSettings?.task_completed ?? true}
+                      onCheckedChange={(checked) => 
+                        handleNotificationSettingChange("task_completed", checked)
+                      }
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Task Reminders</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Get reminders for upcoming tasks
+                      </p>
+                    </div>
+                    <Switch
+                      checked={localNotifSettings?.task_reminders ?? true}
+                      onCheckedChange={(checked) => 
+                        handleNotificationSettingChange("task_reminders", checked)
+                      }
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Pet Updates</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Get notified when your pet levels up
+                      </p>
+                    </div>
+                    <Switch
+                      checked={localNotifSettings?.pet_updates ?? true}
+                      onCheckedChange={(checked) => 
+                        handleNotificationSettingChange("pet_updates", checked)
+                      }
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>AI Suggestions</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Receive smart task scheduling suggestions
+                      </p>
+                    </div>
+                    <Switch
+                      checked={localNotifSettings?.ai_suggestions ?? true}
+                      onCheckedChange={(checked) => 
+                        handleNotificationSettingChange("ai_suggestions", checked)
+                      }
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Daily Reminders</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Get daily summaries of your tasks
+                      </p>
+                    </div>
+                    <Switch
+                      checked={localNotifSettings?.daily_reminders ?? false}
+                      onCheckedChange={(checked) => 
+                        handleNotificationSettingChange("daily_reminders", checked)
+                      }
+                    />
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
