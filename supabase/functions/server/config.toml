@@ -1,0 +1,5 @@
+# Edge Function Configuration for make-server-c3569cb3
+# Disables automatic JWT verification since we handle authentication manually in code
+
+[make-server-c3569cb3]
+verify_jwt = false

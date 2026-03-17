@@ -1,0 +1,4 @@
+# Supabase Edge Functions Configuration
+
+[functions.make-server-c3569cb3]
+verify_jwt = false
