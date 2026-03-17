@@ -8,8 +8,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from django.utils import timezone
 
-from .models import Task, UserProgress
-from .serializers import TaskSerializer
+from .models import Task, UserProgress, Notification, UserNotificationSettings
+from .serializers import TaskSerializer, NotificationSerializer, UserNotificationSettingsSerializer
 
 from rest_framework.decorators import api_view, permission_classes
 from .ai.ai_service import generate_schedule
@@ -33,7 +33,16 @@ class TaskViewSet(viewsets.ModelViewSet):
         return Task.objects.filter(user=self.request.user).order_by("-createdAt")
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        task = serializer.save(user=self.request.user)
+        
+        # ✅ NEW: Create notification for new task
+        create_notification(
+            user=self.request.user,
+            notification_type="task_reminder",
+            title=f"New Task Created 📝",
+            message=f"'{task.title}' has been added to your tasks.",
+            task=task
+        )
 
     def perform_update(self, serializer):
         # ✅ FIX #1: Get original task state BEFORE saving
@@ -71,6 +80,26 @@ class TaskViewSet(viewsets.ModelViewSet):
             progress.petLevel = progress.totalPoints // 100 + 1
 
             progress.save()
+            
+            # ✅ NEW: Create notification for task completion
+            create_notification(
+                user=self.request.user,
+                notification_type="task_completed",
+                title="Task Completed! 🎉",
+                message=f"You earned {task.points} points for completing '{task.title}'",
+                task=task
+            )
+            
+            # ✅ NEW: Create notification for pet level up if applicable
+            old_level = created and 1 or max(1, (progress.totalPoints - task.points) // 100 + 1)
+            if progress.petLevel > old_level:
+                create_notification(
+                    user=self.request.user,
+                    notification_type="pet_update",
+                    title="Your Pet Leveled Up! 🐣➡️🐣",
+                    message=f"Your pet has reached level {progress.petLevel}! ({progress.petStage.upper()})",
+                    task=None
+                )
 
         # ✅ FIX #1: Remove points if toggled back to incomplete
         elif not task.completed and was_completed and task.points > 0:
@@ -229,4 +258,188 @@ def ai_analyze_task(request):
     })
 
     return Response(result)
+
+
+# ✅ NEW: NOTIFICATION APIs
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_notifications(request):
+    """
+    ✅ Fetch all unread notifications for the user
+    """
+    notifications = Notification.objects.filter(user=request.user, is_read=False).order_by("-createdAt")[:20]
+    serializer = NotificationSerializer(notifications, many=True)
+    return Response({
+        "notifications": serializer.data,
+        "unread_count": notifications.count()
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_notification_read(request):
+    """
+    ✅ Mark a notification as read
+    """
+    notification_id = request.data.get("notification_id")
+    
+    try:
+        notification = Notification.objects.get(id=notification_id, user=request.user)
+        notification.is_read = True
+        notification.save()
+        return Response({"success": True})
+    except Notification.DoesNotExist:
+        return Response({"error": "Notification not found"}, status=404)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_all_notifications_read(request):
+    """
+    ✅ Mark all notifications as read
+    """
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return Response({"success": True})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_notification_settings(request):
+    """
+    ✅ Get user's notification settings
+    """
+    settings, created = UserNotificationSettings.objects.get_or_create(user=request.user)
+    serializer = UserNotificationSettingsSerializer(settings)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_notification_settings(request):
+    """
+    ✅ Update user's notification settings
+    """
+    settings, created = UserNotificationSettings.objects.get_or_create(user=request.user)
+    serializer = UserNotificationSettingsSerializer(settings, data=request.data, partial=True)
+    
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=400)
+
+
+# ✅ NEW: Helper function to create notifications
+def create_notification(user, notification_type, title, message, task=None):
+    """
+    ✅ Create a notification if user has enabled that type
+    """
+    settings, _ = UserNotificationSettings.objects.get_or_create(user=user)
+    
+    # Check if notifications are globally enabled
+    if not settings.notifications_enabled:
+        return None
+    
+    # Check if this specific notification type is enabled
+    if notification_type == "task_reminder" and not settings.task_reminders:
+        return None
+    elif notification_type == "task_completed" and not settings.task_completed:
+        return None
+    elif notification_type == "pet_update" and not settings.pet_updates:
+        return None
+    elif notification_type == "ai_suggestion" and not settings.ai_suggestions:
+        return None
+    
+    notification = Notification.objects.create(
+        user=user,
+        notification_type=notification_type,
+        title=title,
+        message=message,
+        task=task
+    )
+    return notification
+
+
+# ✅ NEW: Helper to check and notify about tasks due soon
+def check_and_notify_deadline_tasks(user):
+    """
+    ✅ Check for tasks due within 24 hours and create notifications
+    Returns count of notifications created
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    notifications_created = 0
+    now = timezone.now()
+    tomorrow = now + timedelta(hours=24)
+    
+    # Find incomplete tasks due within 24 hours that haven't been notified yet
+    upcoming_tasks = Task.objects.filter(
+        user=user,
+        completed=False,
+        dueDate__isnull=False,
+        dueDate__gte=now,
+        dueDate__lte=tomorrow
+    )
+    
+    # Track which tasks have been notified to avoid duplicates
+    for task in upcoming_tasks:
+        # Check if we already notified about this task recently (within last hour)
+        one_hour_ago = now - timedelta(hours=1)
+        existing_notification = Notification.objects.filter(
+            user=user,
+            task=task,
+            notification_type="task_reminder",
+            title__contains="due",
+            createdAt__gte=one_hour_ago
+        ).exists()
+        
+        if not existing_notification:
+            # Calculate time until deadline
+            time_until = task.dueDate - now
+            hours_remaining = int(time_until.total_seconds() / 3600)
+            
+            if hours_remaining <= 1:
+                time_str = "in less than 1 hour"
+            elif hours_remaining < 24:
+                time_str = f"in {hours_remaining} hour{'s' if hours_remaining != 1 else ''}"
+            else:
+                time_str = "tomorrow"
+            
+            # Create notification
+            notification = create_notification(
+                user=user,
+                notification_type="task_reminder",
+                title=f"Task Due Soon ⏰",
+                message=f"'{task.title}' is due {time_str}.",
+                task=task
+            )
+            
+            if notification:
+                notifications_created += 1
+    
+    return notifications_created
+
+
+# ✅ NEW: API Endpoint to check and notify about deadline tasks
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def check_deadline_tasks(request):
+    """
+    ✅ Check for tasks due within 24 hours and create notifications
+    Can be called by frontend to manually trigger deadline check
+    or by a periodic task/Celery beat
+    """
+    try:
+        count = check_and_notify_deadline_tasks(request.user)
+        return Response({
+            "success": True,
+            "notifications_created": count,
+            "message": f"Checked for upcoming deadlines. Created {count} notification(s)."
+        })
+    except Exception as e:
+        return Response({
+            "success": False,
+            "error": str(e)
+        }, status=500)
 

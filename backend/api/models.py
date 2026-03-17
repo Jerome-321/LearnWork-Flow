@@ -41,3 +41,54 @@ class UserProgress(models.Model):
 
     def __str__(self):
         return f"{self.user.username} Progress"
+
+
+# ✅ NEW: Notification settings for user preferences
+class UserNotificationSettings(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="notification_settings")
+    
+    # Main toggle
+    notifications_enabled = models.BooleanField(default=True)
+    
+    # Notification type toggles
+    task_reminders = models.BooleanField(default=True)
+    task_completed = models.BooleanField(default=True)
+    pet_updates = models.BooleanField(default=True)
+    ai_suggestions = models.BooleanField(default=True)
+    daily_reminders = models.BooleanField(default=False)
+    
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.user.username} Notification Settings"
+
+
+# ✅ NEW: Store notifications for display
+class Notification(models.Model):
+    NOTIFICATION_TYPES = [
+        ("task_reminder", "Task Reminder"),
+        ("task_completed", "Task Completed"),
+        ("pet_update", "Pet Update"),
+        ("ai_suggestion", "AI Suggestion"),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+    
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    
+    # Link to related task if applicable
+    task = models.ForeignKey(Task, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    # Read status
+    is_read = models.BooleanField(default=False)
+    
+    createdAt = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ["-createdAt"]
+    
+    def __str__(self):
+        return f"{self.notification_type}: {self.title}"
