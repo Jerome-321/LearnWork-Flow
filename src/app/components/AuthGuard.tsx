@@ -1,0 +1,27 @@
+import { ReactNode } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { LoginPage } from "../pages/LoginPage";
+
+export function AuthGuard({ children }: { children: ReactNode }) {
+  console.log("AuthGuard rendering...");
+  const { user, loading } = useAuth();
+
+  console.log("AuthGuard state:", { user: user?.email, loading });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  return <>{children}</>;
+}
