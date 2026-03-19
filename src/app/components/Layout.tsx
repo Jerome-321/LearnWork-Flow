@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Outlet } from "react-router";
 import { TopNav } from "./TopNav";
 import { Sidebar } from "./Sidebar";
-import { TaskDetailPanel } from "./TaskDetailPanel";
+import { TaskActions } from "./TaskActions";
 import { VirtualPet } from "./VirtualPet";
 import { useTaskAPI } from "../hooks/useTaskAPI";
 
@@ -45,7 +45,7 @@ export function Layout() {
 
           {/* Task Detail Panel */}
           {selectedTask && (
-            <TaskDetailPanel
+            <TaskActions
               task={selectedTask}
               onClose={() => setSelectedTaskId(null)}
             />

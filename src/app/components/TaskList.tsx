@@ -133,8 +133,33 @@ export function TaskList({ tasks, selectedTaskId, onSelectTask }: TaskListProps)
                   </h3>
 
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                    {task.description}
+                    {task.description || "No description"}
                   </p>
+
+                  {/* Image Preview */}
+                  {task.image && (
+                    <div className="mb-2">
+                      <img
+                        src={task.image}
+                        alt={task.title}
+                        className="w-full max-h-20 object-cover rounded border"
+                      />
+                    </div>
+                  )}
+
+                  {/* Link Display */}
+                  {task.link && (
+                    <div className="mb-2">
+                      <a
+                        href={task.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline break-all flex items-center gap-1"
+                      >
+                        🔗 {task.link}
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {/* ✅ NEW BUTTON */}
