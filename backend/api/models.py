@@ -20,6 +20,10 @@ class Task(models.Model):
 
     points = models.IntegerField(default=0)
 
+    # Add image and link fields
+    image = models.ImageField(upload_to='task_images/', null=True, blank=True)
+    link = models.URLField(null=True, blank=True)
+
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
 

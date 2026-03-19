@@ -10,6 +10,8 @@ export interface Task {
   priority: TaskPriority;
   completed: boolean;
   points: number;
+  image?: string;
+  link?: string;
   tags?: string[];
   subtasks?: { id: string; title: string; completed: boolean }[];
   createdAt: string;

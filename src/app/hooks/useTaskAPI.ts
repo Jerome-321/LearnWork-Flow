@@ -82,14 +82,30 @@ export function useTaskAPI() {
 
   // ========================= CRUD =========================
 
-  const addTask = async (task: Omit<Task, "id" | "createdAt">) => {
+  const addTask = async (task: Omit<Task, "id" | "createdAt"> & { image?: File | null }) => {
     setLoading(true);
 
     try {
-      await fetch(API_URL + "/tasks/", {
+      const formData = new FormData();
+
+      // Add all task fields to FormData
+      Object.entries(task).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (key === 'image' && value instanceof File) {
+            formData.append('image', value);
+          } else if (key !== 'image') {
+            formData.append(key, String(value));
+          }
+        }
+      });
+
+      const response = await fetch(API_URL + "/tasks/", {
         method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(task)
+        headers: {
+          Authorization: "Bearer " + getAccessToken(),
+          // Don't set Content-Type for FormData, let browser set it with boundary
+        },
+        body: formData
       });
 
       triggerReloadWithLoading();

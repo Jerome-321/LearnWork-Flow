@@ -6,7 +6,7 @@ import { Button } from "../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
 import { Card } from "../components/ui/card";
-import { AddTaskButton } from "../components/AddTaskButton";
+import { TaskActions } from "../components/TaskActions";
 
 interface OutletContext {
   selectedTaskId: string | null;
@@ -83,7 +83,7 @@ export function CalendarPage() {
               </p>
             </div>
           </div>
-          <AddTaskButton />
+          <TaskActions />
         </div>
       </div>
 
