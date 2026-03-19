@@ -114,7 +114,9 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
           {/* Header */}
           <div className="flex items-start justify-between border-b p-4 bg-secondary">
             <div className="flex-1">
-              <h2 className="text-lg font-semibold leading-tight">{task.title}</h2>
+              <h2 className={`text-lg font-semibold leading-tight ${
+                task.completed ? "line-through text-muted-foreground" : ""
+              }`}>{task.title}</h2>
               <Badge className={`mt-2 ${getCategoryColor(task.category)}`}>
                 {task.category.charAt(0).toUpperCase() + task.category.slice(1)}
               </Badge>

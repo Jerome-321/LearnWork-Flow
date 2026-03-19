@@ -9,6 +9,7 @@ import { useTaskAPI } from "../hooks/useTaskAPI";
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   
   const { tasks, loading } = useTaskAPI();
   
@@ -34,12 +35,12 @@ export function Layout() {
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopNav onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+        <TopNav onMenuClick={() => setSidebarOpen(!sidebarOpen)} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 
         <main className="flex flex-1 overflow-hidden relative">
           {/* Task List Area */}
           <div className={`flex-1 overflow-auto transition-all duration-300 ${selectedTask ? "lg:mr-[400px]" : ""}`}>
-            <Outlet context={{ selectedTaskId, setSelectedTaskId }} />
+            <Outlet context={{ selectedTaskId, setSelectedTaskId, searchQuery, setSearchQuery }} />
           </div>
 
           {/* Task Detail Panel */}

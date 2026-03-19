@@ -7,15 +7,23 @@ import { BookOpen } from "lucide-react";
 interface OutletContext {
   selectedTaskId: string | null;
   setSelectedTaskId: (id: string | null) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 }
 
 export function AcademicPage() {
-  const { selectedTaskId, setSelectedTaskId } = useOutletContext<OutletContext>();
+  const { selectedTaskId, setSelectedTaskId, searchQuery } = useOutletContext<OutletContext>();
   const { tasks } = useTaskAPI();
 
   const academicTasks = tasks.filter((t) => t.category === "academic");
-  const activeTasks = academicTasks.filter((t) => !t.completed);
-  const completedTasks = academicTasks.filter((t) => t.completed);
+  
+  const filteredTasks = academicTasks.filter((task) =>
+    task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    task.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const activeTasks = filteredTasks.filter((t) => !t.completed);
+  const completedTasks = filteredTasks.filter((t) => t.completed);
 
   return (
     <div className="flex flex-col h-full bg-background">

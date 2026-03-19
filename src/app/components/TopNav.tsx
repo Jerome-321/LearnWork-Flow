@@ -1,4 +1,4 @@
-import { Search, Bell, Moon, Sun, Menu, LogOut, User, Settings, RefreshCw, Check } from "lucide-react";
+import { Search, Moon, Sun, Menu, LogOut, User, Settings, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useTheme } from "next-themes";
@@ -20,12 +20,14 @@ import { toast } from "sonner";
 
 interface TopNavProps {
   onMenuClick: () => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 }
 
-export function TopNav({ onMenuClick }: TopNavProps) {
+export function TopNav({ onMenuClick, searchQuery, setSearchQuery }: TopNavProps) {
   const { theme, setTheme } = useTheme();
   const { user, signOut } = useAuth();
-  const { syncData, unreadCount, notifications = [], markNotificationRead, markAllNotificationsRead, notificationSettings } = useTaskAPI();
+  const { syncData } = useTaskAPI();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
 
@@ -50,15 +52,6 @@ export function TopNav({ onMenuClick }: TopNavProps) {
     }
   };
 
-  const handleNotificationClick = (notificationId: string) => {
-    markNotificationRead(notificationId);
-  };
-
-  const handleMarkAllRead = () => {
-    markAllNotificationsRead();
-    toast.success("All notifications marked as read");
-  };
-
   const userInitials = user?.email
     ?.split("@")[0]
     ?.split(".")
@@ -66,10 +59,6 @@ export function TopNav({ onMenuClick }: TopNavProps) {
     ?.join("")
     ?.toUpperCase()
     ?.slice(0, 2) || "U";
-
-  // ✅ Check if notifications are enabled
-  const notificationsEnabled = notificationSettings?.notifications_enabled ?? true;
-  const shouldShowBell = notificationsEnabled && unreadCount > 0;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background">
@@ -111,6 +100,8 @@ export function TopNav({ onMenuClick }: TopNavProps) {
             <Input
               placeholder="Search tasks..."
               className="pl-10 h-9 bg-muted/50 border-0"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
@@ -121,74 +112,6 @@ export function TopNav({ onMenuClick }: TopNavProps) {
           <Button variant="ghost" size="icon" className="lg:hidden h-9 w-9">
             <Search className="h-4 w-4" />
           </Button>
-
-          {/* ✅ NEW: Notifications with dynamic state */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-9 w-9">
-                <Bell className="h-4 w-4" />
-                {shouldShowBell && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center text-[10px] font-bold"
-                  >
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </Badge>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel className="flex items-center justify-between">
-                <span>Notifications</span>
-                {unreadCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs"
-                    onClick={handleMarkAllRead}
-                  >
-                    Mark all read
-                  </Button>
-                )}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <div className="p-2 space-y-1 max-h-96 overflow-y-auto">
-                {notificationsEnabled ? (
-                  notifications.length > 0 ? (
-                    notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        onClick={() => handleNotificationClick(notification.id)}
-                        className={`p-3 rounded cursor-pointer transition-colors ${
-                          notification.is_read
-                            ? "hover:bg-muted/50 opacity-60"
-                            : "bg-blue-50 dark:bg-blue-950 hover:bg-blue-100 dark:hover:bg-blue-900"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{notification.title}</p>
-                            <p className="text-xs text-muted-foreground">{notification.message}</p>
-                          </div>
-                          {!notification.is_read && (
-                            <div className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0 mt-1" />
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-3 text-center text-sm text-muted-foreground">
-                      No notifications yet
-                    </div>
-                  )
-                ) : (
-                  <div className="p-3 text-center text-sm text-muted-foreground">
-                    ✓ Notifications are disabled
-                  </div>
-                )}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
 
           {/* Theme Toggle */}
           <Button

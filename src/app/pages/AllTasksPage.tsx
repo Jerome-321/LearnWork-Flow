@@ -7,14 +7,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 interface OutletContext {
   selectedTaskId: string | null;
   setSelectedTaskId: (id: string | null) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 }
 
 export function AllTasksPage() {
-  const { selectedTaskId, setSelectedTaskId } = useOutletContext<OutletContext>();
+  const { selectedTaskId, setSelectedTaskId, searchQuery } = useOutletContext<OutletContext>();
   const { tasks } = useTaskAPI();
 
-  const activeTasks = tasks.filter((t) => !t.completed);
-  const completedTasks = tasks.filter((t) => t.completed);
+  const filteredTasks = tasks.filter((task) =>
+    task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    task.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const activeTasks = filteredTasks.filter((t) => !t.completed);
+  const completedTasks = filteredTasks.filter((t) => t.completed);
   
   return (
     <div className="flex flex-col h-full bg-background">

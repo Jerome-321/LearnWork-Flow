@@ -94,7 +94,8 @@ export function useTaskAPI() {
 
       triggerReloadWithLoading();
 
-    } catch {
+    } catch (error) {
+      console.error("Error adding task:", error);
       setLoading(false);
     }
   };
@@ -111,7 +112,8 @@ export function useTaskAPI() {
 
       triggerReloadWithLoading();
 
-    } catch {
+    } catch (error) {
+      console.error("Error updating task:", error);
       setLoading(false);
     }
   };
@@ -127,7 +129,8 @@ export function useTaskAPI() {
 
       triggerReloadWithLoading();
 
-    } catch {
+    } catch (error) {
+      console.error("Error deleting task:", error);
       setLoading(false);
     }
   };
@@ -150,12 +153,14 @@ export function useTaskAPI() {
 
       triggerReloadWithLoading();
 
-    } finally {
+    } catch (error) {
+      console.error("Error toggling task:", error);
       setPendingToggleIds(prev => {
         const next = new Set(prev);
         next.delete(id);
         return next;
       });
+      setLoading(false);
     }
   };
 

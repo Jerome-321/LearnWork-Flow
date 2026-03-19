@@ -198,6 +198,7 @@ def login(request):
 # USER PROGRESS API
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def progress(request):
 
     progress, created = UserProgress.objects.get_or_create(
@@ -208,8 +209,32 @@ def progress(request):
         "totalPoints": progress.totalPoints,
         "tasksCompleted": progress.tasksCompleted,
         "petLevel": progress.petLevel,
-        "petStage": progress.petStage
+        "petStage": progress.petStage,
+        "currentStreak": progress.currentStreak,
+        "longestStreak": progress.longestStreak
     })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def leaderboard(request):
+    # Get all users' progress sorted by totalPoints descending
+    leaderboard_data = UserProgress.objects.select_related('user').order_by('-totalPoints')
+    
+    result = []
+    for idx, progress in enumerate(leaderboard_data):
+        result.append({
+            "rank": idx + 1,
+            "id": progress.user.id,
+            "username": progress.user.username,
+            "totalPoints": progress.totalPoints,
+            "currentStreak": progress.currentStreak,
+            "longestStreak": progress.longestStreak,
+            "tasksCompleted": progress.tasksCompleted,
+            "petLevel": progress.petLevel,
+            "petStage": progress.petStage
+        })
+    
+    return Response(result)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

@@ -37,6 +37,8 @@ class UserProgress(models.Model):
     petLevel = models.IntegerField(default=1)
     petStage = models.CharField(max_length=20, default="egg")
 
+    currentStreak = models.IntegerField(default=0)
+    longestStreak = models.IntegerField(default=0)
     lastCompletedDate = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):

@@ -7,15 +7,23 @@ import { Flag } from "lucide-react";
 interface OutletContext {
   selectedTaskId: string | null;
   setSelectedTaskId: (id: string | null) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 }
 
 export function PriorityPage() {
-  const { selectedTaskId, setSelectedTaskId } = useOutletContext<OutletContext>();
+  const { selectedTaskId, setSelectedTaskId, searchQuery } = useOutletContext<OutletContext>();
   const { tasks } = useTaskAPI();
 
   const priorityTasks = tasks.filter((t) => t.priority === "high");
-  const activeTasks = priorityTasks.filter((t) => !t.completed);
-  const completedTasks = priorityTasks.filter((t) => t.completed);
+  
+  const filteredTasks = priorityTasks.filter((task) =>
+    task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    task.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const activeTasks = filteredTasks.filter((t) => !t.completed);
+  const completedTasks = filteredTasks.filter((t) => t.completed);
 
   return (
     <div className="flex flex-col h-full bg-background">
