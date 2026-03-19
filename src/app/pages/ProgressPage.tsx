@@ -81,7 +81,7 @@ const RoundedBar = (props: any) => {
   return (
     <g>
       <defs>
-        <linearGradient id={`gradient-${fill}`} x1="0" y1="0" x1="0" y2="1">
+        <linearGradient id={`gradient-${fill}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={fill} stopOpacity={1} />
           <stop offset="100%" stopColor={fill} stopOpacity={0.8} />
         </linearGradient>

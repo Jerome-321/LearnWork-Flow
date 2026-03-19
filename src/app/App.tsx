@@ -6,6 +6,13 @@ import { AuthGuard } from "./components/AuthGuard";
 import { ThemeProvider } from "./providers/ThemeProvider";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
+// ✅ ADD THESE
+import { LoadingProvider } from "./contexts/LoadingContext";
+import LoadingOverlay from "./components/LoadingOverlay";
+
+// ❌ REMOVE THIS
+// import "./utils/loadingOverlay";
+
 function App() {
   console.log("App rendering...");
   
@@ -13,9 +20,17 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <AuthProvider>
-          <AuthGuard>
-            <RouterProvider router={router} />
-          </AuthGuard>
+
+          {/* ✅ GLOBAL LOADING WRAPPER */}
+          <LoadingProvider>
+            <LoadingOverlay />
+
+            <AuthGuard>
+              <RouterProvider router={router} />
+            </AuthGuard>
+
+          </LoadingProvider>
+
           <Toaster />
         </AuthProvider>
       </ThemeProvider>

@@ -1,627 +1,156 @@
 import { useState, useEffect, useCallback } from "react";
+import { flushSync } from "react-dom";
 import { Task, UserProgress, UserSettings } from "../types/task";
 import { useAuth } from "../contexts/AuthContext";
+import { useLoading } from "../contexts/LoadingContext";
 
 const API_URL = "http://127.0.0.1:8000/api";
-
-const STORAGE_PREFIX = "taskly_";
-
-const TASKS_KEY = (userId: string) => STORAGE_PREFIX + "tasks_" + userId;
-const PROGRESS_KEY = (userId: string) => STORAGE_PREFIX + "progress_" + userId;
-const SETTINGS_KEY = (userId: string) => STORAGE_PREFIX + "settings_" + userId;
-const NOTIFICATIONS_KEY = (userId: string) => STORAGE_PREFIX + "notifications_" + userId;
-const NOTIFICATION_SETTINGS_KEY = (userId: string) => STORAGE_PREFIX + "notification_settings_" + userId;
-
-// ✅ NEW: Types for notifications
-export interface Notification {
-  id: string;
-  notification_type: "task_reminder" | "task_completed" | "pet_update" | "ai_suggestion";
-  title: string;
-  message: string;
-  task?: string;
-  is_read: boolean;
-  createdAt: string;
-}
-
-export interface NotificationSettings {
-  notifications_enabled: boolean;
-  task_reminders: boolean;
-  task_completed: boolean;
-  pet_updates: boolean;
-  ai_suggestions: boolean;
-  daily_reminders: boolean;
-}
 
 export function useTaskAPI() {
 
   const { getAccessToken, user } = useAuth();
+  const { setLoading } = useLoading();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
-  
-  // ✅ NEW: Notification states
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLocalLoading] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [pendingToggleIds, setPendingToggleIds] = useState<Set<string>>(new Set());
 
-
-
   const getAuthHeaders = useCallback(() => {
-
     const token = getAccessToken();
-
     return {
       "Content-Type": "application/json",
       Authorization: "Bearer " + token,
     };
-
   }, [getAccessToken]);
 
-
-
-  // ✅ FIX #2: New function to fetch progress from backend
-  const fetchProgress = useCallback(async () => {
-    if (!user || isOfflineMode) return null;
-
-    try {
-      const headers = getAuthHeaders();
-      const response = await fetch(API_URL + "/progress/", { headers });
-
-      if (!response.ok) throw new Error("Failed to fetch progress");
-
-      const progressData = await response.json();
-      setProgress(progressData);
-      saveToStorage({ progress: progressData });
-
-      return progressData;
-    } catch (err) {
-      console.error("❌ Error fetching progress:", err);
-      return null;
-    }
-  }, [user, getAuthHeaders, isOfflineMode]);
-
-
-  // ✅ NEW: Fetch notifications
-  const fetchNotifications = useCallback(async () => {
-    if (!user || isOfflineMode) return null;
-
-    try {
-      const headers = getAuthHeaders();
-      const response = await fetch(API_URL + "/notifications/", { headers });
-
-      if (!response.ok) throw new Error("Failed to fetch notifications");
-
-      const data = await response.json();
-      setNotifications(data.notifications || []);
-      setUnreadCount(data.unread_count || 0);
-      saveToStorage({ notifications: data.notifications });
-
-      return data;
-    } catch (err) {
-      console.error("❌ Error fetching notifications:", err);
-      return null;
-    }
-  }, [user, getAuthHeaders, isOfflineMode]);
-
-
-  // ✅ NEW: Fetch notification settings
-  const fetchNotificationSettings = useCallback(async () => {
-    if (!user || isOfflineMode) return null;
-
-    try {
-      const headers = getAuthHeaders();
-      const response = await fetch(API_URL + "/notification-settings/", { headers });
-
-      if (!response.ok) throw new Error("Failed to fetch notification settings");
-
-      const settings = await response.json();
-      setNotificationSettings(settings);
-      saveToStorage({ notificationSettings: settings });
-
-      return settings;
-    } catch (err) {
-      console.error("❌ Error fetching notification settings:", err);
-      return null;
-    }
-  }, [user, getAuthHeaders, isOfflineMode]);
-
-
-  // ✅ NEW: Check for tasks due soon and create notifications
-  const checkDeadlineTasks = useCallback(async () => {
-    if (!user || isOfflineMode) return null;
-
-    try {
-      const headers = getAuthHeaders();
-      const response = await fetch(API_URL + "/notifications/check-deadlines/", {
-        method: "POST",
-        headers
-      });
-
-      if (!response.ok) throw new Error("Failed to check deadline tasks");
-
-      const data = await response.json();
-      
-      // Fetch updated notifications after checking deadlines
-      if (data.notifications_created > 0) {
-        await fetchNotifications();
-      }
-      
-      return data;
-    } catch (err) {
-      console.error("❌ Error checking deadline tasks:", err);
-      return null;
-    }
-  }, [user, getAuthHeaders, isOfflineMode, fetchNotifications]);
-
-
-  // ✅ NEW: Mark notification as read
-  const markNotificationRead = useCallback(async (notificationId: string) => {
-    if (!user) return;
-
-    try {
-      const headers = getAuthHeaders();
-      await fetch(API_URL + "/notifications/mark-read/", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ notification_id: notificationId })
-      });
-
-      // Update local state
-      setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (err) {
-      console.error("❌ Error marking notification as read:", err);
-    }
-  }, [user, getAuthHeaders]);
-
-
-  // ✅ NEW: Mark all notifications as read
-  const markAllNotificationsRead = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const headers = getAuthHeaders();
-      await fetch(API_URL + "/notifications/mark-all-read/", {
-        method: "POST",
-        headers
-      });
-
-      // Update local state
-      setNotifications(prev =>
-        prev.map(n => ({ ...n, is_read: true }))
-      );
-      setUnreadCount(0);
-    } catch (err) {
-      console.error("❌ Error marking all notifications as read:", err);
-    }
-  }, [user, getAuthHeaders]);
-
-
-  // ✅ NEW: Update notification settings
-  const updateNotificationSettings = useCallback(async (updates: Partial<NotificationSettings>) => {
-    if (!user) return;
-
-    try {
-      const headers = getAuthHeaders();
-      const response = await fetch(API_URL + "/notification-settings/update/", {
-        method: "POST",
-        headers,
-        body: JSON.stringify(updates)
-      });
-
-      if (!response.ok) throw new Error("Failed to update settings");
-
-      const updatedSettings = await response.json();
-      setNotificationSettings(updatedSettings);
-      saveToStorage({ notificationSettings: updatedSettings });
-
-      return updatedSettings;
-    } catch (err) {
-      console.error("❌ Error updating notification settings:", err);
-      return null;
-    }
-  }, [user, getAuthHeaders]);
-
-  const getDefaultProgress = (): UserProgress => ({
-    totalPoints: 0,
-    currentStreak: 0,
-    longestStreak: 0,
-    lastCompletedDate: null,
-    petLevel: 1,
-    petStage: "egg",
-    tasksCompleted: 0,
-    goals: [],
-  });
-
-
-
-  const getDefaultSettings = (): UserSettings => ({
-    displayName: user?.email?.split("@")[0] || "User",
-    email: user?.email || "",
-    avatar: "",
-    theme: "light",
-    notifications: true,
-    aiSuggestions: true,
-    weekStartsOn: 0,
-  });
-
-
-  const getDefaultNotificationSettings = (): NotificationSettings => ({
-    notifications_enabled: true,
-    task_reminders: true,
-    task_completed: true,
-    pet_updates: true,
-    ai_suggestions: true,
-    daily_reminders: false,
-  });
-
-  const saveToStorage = (data: {
-    tasks?: Task[],
-    progress?: UserProgress,
-    settings?: UserSettings,
-    notifications?: Notification[],
-    notificationSettings?: NotificationSettings
-  }) => {
-
-    if (!user) return;
-
-    if (data.tasks)
-      localStorage.setItem(TASKS_KEY(user.id), JSON.stringify(data.tasks));
-
-    if (data.progress)
-      localStorage.setItem(PROGRESS_KEY(user.id), JSON.stringify(data.progress));
-
-    if (data.settings)
-      localStorage.setItem(SETTINGS_KEY(user.id), JSON.stringify(data.settings));
-
-    if (data.notifications)
-      localStorage.setItem(NOTIFICATIONS_KEY(user.id), JSON.stringify(data.notifications));
-
-    if (data.notificationSettings)
-      localStorage.setItem(NOTIFICATION_SETTINGS_KEY(user.id), JSON.stringify(data.notificationSettings));
-  };
-
-
-
-  const loadFromStorage = () => {
-
-    if (!user)
-      return {
-        tasks: [],
-        progress: getDefaultProgress(),
-        settings: getDefaultSettings(),
-        notifications: [],
-        notificationSettings: getDefaultNotificationSettings()
-      };
-
-    const storedTasks = localStorage.getItem(TASKS_KEY(user.id));
-    const storedProgress = localStorage.getItem(PROGRESS_KEY(user.id));
-    const storedSettings = localStorage.getItem(SETTINGS_KEY(user.id));
-    const storedNotifications = localStorage.getItem(NOTIFICATIONS_KEY(user.id));
-    const storedNotificationSettings = localStorage.getItem(NOTIFICATION_SETTINGS_KEY(user.id));
-
-    return {
-      tasks: storedTasks ? JSON.parse(storedTasks) : [],
-      progress: storedProgress ? JSON.parse(storedProgress) : getDefaultProgress(),
-      settings: storedSettings ? JSON.parse(storedSettings) : getDefaultSettings(),
-      notifications: storedNotifications ? JSON.parse(storedNotifications) : [],
-      notificationSettings: storedNotificationSettings ? JSON.parse(storedNotificationSettings) : getDefaultNotificationSettings(),
-    };
-
-  };
-
-
+  // ========================= SYNC =========================
 
   const syncData = useCallback(async () => {
-
     if (!user) return;
 
     try {
-
-      setLoading(true);
-      setError(null);
-      setIsOfflineMode(false);
+      setLocalLoading(true);
 
       const headers = getAuthHeaders();
 
       const response = await fetch(API_URL + "/tasks/", { headers });
-
-      if (!response.ok) throw new Error("Server error");
-
       const data = await response.json();
 
-      setTasks(data);
-
-      // ✅ FIX #3: Actually fetch progress from backend instead of defaults
       const progressResponse = await fetch(API_URL + "/progress/", { headers });
-      if (progressResponse.ok) {
-        const progressData = await progressResponse.json();
+      const progressData = progressResponse.ok ? await progressResponse.json() : null;
+
+      flushSync(() => {
+        setTasks(data);
         setProgress(progressData);
-        saveToStorage({
-          tasks: data,
-          progress: progressData,
-          settings: getDefaultSettings()
-        });
-      } else {
-        setProgress(getDefaultProgress());
-        saveToStorage({
-          tasks: data,
-          progress: getDefaultProgress(),
-          settings: getDefaultSettings()
-        });
-      }
+      });
 
-      // ✅ NEW: Fetch notifications and settings on sync
-      const notifResponse = await fetch(API_URL + "/notifications/", { headers });
-      if (notifResponse.ok) {
-        const notifData = await notifResponse.json();
-        setNotifications(notifData.notifications || []);
-        setUnreadCount(notifData.unread_count || 0);
-      }
+      setSettings({
+        displayName: user?.email?.split("@")[0] || "User",
+        email: user?.email || "",
+        avatar: "",
+        theme: "light",
+        notifications: true,
+        aiSuggestions: true,
+        weekStartsOn: 0,
+      });
 
-      const settingsResponse = await fetch(API_URL + "/notification-settings/", { headers });
-      if (settingsResponse.ok) {
-        const notifSettings = await settingsResponse.json();
-        setNotificationSettings(notifSettings);
-      }
-
-      setSettings(getDefaultSettings());
-
-      console.log("✅ Connected to Django backend");
-
-    } catch (err) {
-
-      console.log("📱 Offline mode");
-
+    } catch {
       setIsOfflineMode(true);
-
-      const local = loadFromStorage();
-
-      setTasks(local.tasks);
-      setProgress(local.progress);
-      setSettings(local.settings);
-      setNotifications(local.notifications);
-      setNotificationSettings(local.notificationSettings);
-
     } finally {
-
-      setLoading(false);
-
+      setLocalLoading(false);
     }
-
   }, [user, getAuthHeaders]);
 
-
-
   useEffect(() => {
-
     if (user) syncData();
-
-    else {
-      setTasks([]);
-      setProgress(null);
-      setSettings(null);
-      setLoading(false);
-    }
-
   }, [user, syncData]);
 
-  // ✅ AUTO-SYNC #1: Polling for real-time updates every 7 seconds
-  useEffect(() => {
-    if (!user || isOfflineMode) return;
+  // ========================= RELOAD HELPER =========================
 
-    // Store polling interval ID for cleanup
-    let pollInterval: NodeJS.Timeout | null = null;
-    let pollCount = 0;  // ✅ Track poll count for deadline checks
+  const triggerReloadWithLoading = () => {
+    localStorage.setItem(
+      "global-loading",
+      JSON.stringify({ startTime: Date.now() })
+    );
 
-    // Function to perform periodic sync
-    const startPolling = () => {
-      pollInterval = setInterval(async () => {
-        pollCount++;
-        try {
-          const headers = getAuthHeaders();
-          
-          // ✅ Fetch tasks
-          const tasksResponse = await fetch(API_URL + "/tasks/", { headers });
-          if (tasksResponse.ok) {
-            const tasksData = await tasksResponse.json();
-            setTasks(tasksData);
-            saveToStorage({ tasks: tasksData });
-          }
+    window.location.reload();
+  };
 
-          // ✅ Fetch progress
-          const progressResponse = await fetch(API_URL + "/progress/", { headers });
-          if (progressResponse.ok) {
-            const progressData = await progressResponse.json();
-            setProgress(progressData);
-            saveToStorage({ progress: progressData });
-          }
-
-          // ✅ NEW: Fetch notifications
-          const notifResponse = await fetch(API_URL + "/notifications/", { headers });
-          if (notifResponse.ok) {
-            const notifData = await notifResponse.json();
-            setNotifications(notifData.notifications || []);
-            setUnreadCount(notifData.unread_count || 0);
-            saveToStorage({ notifications: notifData.notifications });
-          }
-
-          // ✅ NEW: Check for deadline tasks every ~60 seconds (every 9th poll at 7s intervals)
-          if (pollCount % 9 === 0) {
-            try {
-              const deadlineResponse = await fetch(API_URL + "/notifications/check-deadlines/", {
-                method: "POST",
-                headers
-              });
-              if (deadlineResponse.ok) {
-                const deadlineData = await deadlineResponse.json();
-                if (deadlineData.notifications_created > 0) {
-                  console.log(`✅ Created ${deadlineData.notifications_created} deadline notification(s)`);
-                  // Fetch updated notifications
-                  const updatedNotifResponse = await fetch(API_URL + "/notifications/", { headers });
-                  if (updatedNotifResponse.ok) {
-                    const updatedNotifData = await updatedNotifResponse.json();
-                    setNotifications(updatedNotifData.notifications || []);
-                    setUnreadCount(updatedNotifData.unread_count || 0);
-                    saveToStorage({ notifications: updatedNotifData.notifications });
-                  }
-                }
-              }
-            } catch (err) {
-              console.log("⚠️  Deadline check failed");
-            }
-          }
-        } catch (err) {
-          console.log("⚠️  Polling sync failed, continuing with local data");
-        }
-      }, 7000); // Poll every 7 seconds
-    };
-
-    // Start polling after initial load
-    startPolling();
-
-    // ✅ Cleanup: stop polling on unmount or when offline
-    return () => {
-      if (pollInterval) clearInterval(pollInterval);
-    };
-  }, [user, isOfflineMode, getAuthHeaders]);
-
-
+  // ========================= CRUD =========================
 
   const addTask = async (task: Omit<Task, "id" | "createdAt">) => {
+    setLoading(true);
 
     try {
-
-      const response = await fetch(API_URL + "/tasks/", {
+      await fetch(API_URL + "/tasks/", {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(task)
       });
 
-      const createdTask = await response.json();
-
-      const updatedTasks = [...tasks, createdTask];
-
-      setTasks(updatedTasks);
-      saveToStorage({ tasks: updatedTasks });
-
-      return createdTask;
+      triggerReloadWithLoading();
 
     } catch {
-
-      const newTask: Task = {
-        id: crypto.randomUUID(),
-        ...task,
-        createdAt: new Date().toISOString(),
-        completed: false
-      };
-
-      const updatedTasks = [...tasks, newTask];
-
-      setTasks(updatedTasks);
-      saveToStorage({ tasks: updatedTasks });
-
-      return newTask;
+      setLoading(false);
     }
   };
 
-
-
   const updateTask = async (id: string, updates: Partial<Task>) => {
+    setLoading(true);
 
     try {
-
-      const response = await fetch(API_URL + "/tasks/" + id + "/", {
+      await fetch(API_URL + "/tasks/" + id + "/", {
         method: "PATCH",
         headers: getAuthHeaders(),
         body: JSON.stringify(updates)
       });
 
-      const updatedTask = await response.json();
-
-      const updatedTasks = tasks.map(t =>
-        t.id === id ? updatedTask : t
-      );
-
-      setTasks(updatedTasks);
-      saveToStorage({ tasks: updatedTasks });
-
-      return updatedTask;
+      triggerReloadWithLoading();
 
     } catch {
-
-      const updatedTasks = tasks.map(t =>
-        t.id === id ? { ...t, ...updates } : t
-      );
-
-      setTasks(updatedTasks);
-      saveToStorage({ tasks: updatedTasks });
-
-      return updatedTasks.find(t => t.id === id)!;
+      setLoading(false);
     }
   };
 
-
-
   const deleteTask = async (id: string) => {
+    setLoading(true);
 
     try {
-
       await fetch(API_URL + "/tasks/" + id + "/", {
         method: "DELETE",
         headers: getAuthHeaders()
       });
 
-    } catch {}
+      triggerReloadWithLoading();
 
-    const updatedTasks = tasks.filter(t => t.id !== id);
-
-    setTasks(updatedTasks);
-    saveToStorage({ tasks: updatedTasks });
+    } catch {
+      setLoading(false);
+    }
   };
 
-
-
   const toggleTaskComplete = async (id: string) => {
-
     const task = tasks.find(t => t.id === id);
-
     if (!task) return;
 
-    // ✅ FIX #2: Prevent duplicate API calls for the same task
-    if (pendingToggleIds.has(id)) {
-      console.log("⏳ Toggle already in progress for task:", id);
-      return;
-    }
+    if (pendingToggleIds.has(id)) return;
 
-    // Mark this task as pending
     setPendingToggleIds(prev => new Set(prev).add(id));
+    setLoading(true);
 
     try {
-      const result = await updateTask(id, { completed: !task.completed });
-      
-      // ✅ FIX #2: Re-fetch progress after toggling to update pet level/XP
-      // ✅ NEW: Also fetch notifications to show task completion alert
-      // Small delay to ensure backend has processed the update
-      setTimeout(() => {
-        fetchProgress();
-        fetchNotifications();
-      }, 150);
+      await fetch(API_URL + "/tasks/" + id + "/", {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ completed: !task.completed })
+      });
 
-      return result;
-    } catch (error) {
-      console.error("❌ Failed to toggle task:", error);
-      throw error;
+      triggerReloadWithLoading();
+
     } finally {
-      // Remove from pending set
       setPendingToggleIds(prev => {
         const next = new Set(prev);
         next.delete(id);
@@ -630,93 +159,16 @@ export function useTaskAPI() {
     }
   };
 
-
-
-  const analyzeTaskAI = async (
-    title: string,
-    description: string,
-    category: TaskCategory,
-    priority: string = "medium",
-    dueDate: string = ""
-  ) => {
-
-    try {
-
-      // ✅ IMPROVED: Pass priority and dueDate for smarter AI suggestions
-      const response = await fetch(API_URL + "/ai/analyze/", {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ 
-          title, 
-          description, 
-          category,
-          priority,
-          dueDate
-        })
-      });
-
-      if (!response.ok) throw new Error();
-
-      return await response.json();
-
-    } catch {
-
-      console.log("⚠️  AI endpoint unavailable, using fallback");
-
-      return null;
-    }
-
-  };
-
-
-
-  const updateSettings = async (updates: Partial<UserSettings>) => {
-
-    const updatedSettings = {
-      ...(settings || getDefaultSettings()),
-      ...updates
-    };
-
-    setSettings(updatedSettings);
-
-    saveToStorage({ settings: updatedSettings });
-
-    return updatedSettings;
-  };
-
-
-
   return {
     tasks,
     progress,
     settings,
     loading,
-    error,
     isOfflineMode,
-
     addTask,
     updateTask,
     deleteTask,
     toggleTaskComplete,
-    fetchProgress,
-
-    analyzeTaskAI,
-
-    updateSettings,
-    syncData,
-    
-    // ✅ Notification management
-    notifications,
-    notificationSettings,
-    unreadCount,
-    fetchNotifications,
-    fetchNotificationSettings,
-    markNotificationRead,
-    markAllNotificationsRead,
-    updateNotificationSettings,
-    
-    // ✅ NEW: Deadline task notification
-    checkDeadlineTasks
+    syncData
   };
-
 }

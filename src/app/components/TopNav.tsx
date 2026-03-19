@@ -25,7 +25,7 @@ interface TopNavProps {
 export function TopNav({ onMenuClick }: TopNavProps) {
   const { theme, setTheme } = useTheme();
   const { user, signOut } = useAuth();
-  const { syncData, unreadCount, notifications, markNotificationRead, markAllNotificationsRead, notificationSettings } = useTaskAPI();
+  const { syncData, unreadCount, notifications = [], markNotificationRead, markAllNotificationsRead, notificationSettings } = useTaskAPI();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
 
