@@ -7,15 +7,23 @@ import { User } from "lucide-react";
 interface OutletContext {
   selectedTaskId: string | null;
   setSelectedTaskId: (id: string | null) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 }
 
 export function PersonalPage() {
-  const { selectedTaskId, setSelectedTaskId } = useOutletContext<OutletContext>();
+  const { selectedTaskId, setSelectedTaskId, searchQuery } = useOutletContext<OutletContext>();
   const { tasks } = useTaskAPI();
 
   const personalTasks = tasks.filter((t) => t.category === "personal");
-  const activeTasks = personalTasks.filter((t) => !t.completed);
-  const completedTasks = personalTasks.filter((t) => t.completed);
+  
+  const filteredTasks = personalTasks.filter((task) =>
+    task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    task.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const activeTasks = filteredTasks.filter((t) => !t.completed);
+  const completedTasks = filteredTasks.filter((t) => t.completed);
 
   return (
     <div className="flex flex-col h-full bg-background">

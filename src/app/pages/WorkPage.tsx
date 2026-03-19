@@ -7,15 +7,23 @@ import { Briefcase } from "lucide-react";
 interface OutletContext {
   selectedTaskId: string | null;
   setSelectedTaskId: (id: string | null) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 }
 
 export function WorkPage() {
-  const { selectedTaskId, setSelectedTaskId } = useOutletContext<OutletContext>();
+  const { selectedTaskId, setSelectedTaskId, searchQuery } = useOutletContext<OutletContext>();
   const { tasks } = useTaskAPI();
 
   const workTasks = tasks.filter((t) => t.category === "work");
-  const activeTasks = workTasks.filter((t) => !t.completed);
-  const completedTasks = workTasks.filter((t) => t.completed);
+  
+  const filteredTasks = workTasks.filter((task) =>
+    task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    task.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const activeTasks = filteredTasks.filter((t) => !t.completed);
+  const completedTasks = filteredTasks.filter((t) => t.completed);
 
   return (
     <div className="flex flex-col h-full bg-background">

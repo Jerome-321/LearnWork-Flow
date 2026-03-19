@@ -5,6 +5,8 @@ from api.views import (
     TaskViewSet, 
     login, 
     register,
+    progress,
+    leaderboard,
     ai_analyze_task,
     get_notifications,
     mark_notification_read,
@@ -25,6 +27,8 @@ urlpatterns = [
 
     path('api/login/', login),
     path('api/register/', register),
+    path('api/progress/', progress),
+    path('api/leaderboard/', leaderboard),
     path("api/ai/analyze/", ai_analyze_task),
     
     # ✅ Notification endpoints
