@@ -42,6 +42,8 @@ export function SettingsPage() {
   const { isSubscribed, isLoading, permission, isSupported, subscriptionChecked, subscribe, unsubscribe, requestNotificationPermission, checkSubscriptionStatus } = usePushNotifications();
   const { signOut, user, getAccessToken } = useAuth();
 
+  const API_URL = import.meta.env.VITE_API_URL || "https://learnwork-flow.onrender.com/api";
+
   const sendTestNotification = async () => {
     try {
       const token = getAccessToken();
@@ -82,7 +84,7 @@ export function SettingsPage() {
         }
       }
 
-      const response = await fetch('http://127.0.0.1:8000/api/notifications/send-test/', {
+      const response = await fetch(`${API_URL}/notifications/send-test/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

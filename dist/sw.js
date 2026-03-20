@@ -9,6 +9,8 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('push', event => {
+  console.log('[SW] Push event received');
+  
   event.waitUntil((async () => {
     const defaultPayload = {
       title: 'Task Reminder',
@@ -19,55 +21,61 @@ self.addEventListener('push', event => {
     let data = { ...defaultPayload };
 
     if (event.data) {
-      // PushMessageData.json() can reject if payload is not valid JSON.
-      // Use await + try/catch so we can handle plain text payloads too.
+      console.log('[SW] Push event has data');
       try {
         data = await event.data.json();
+        console.log('[SW] Parsed push data:', data);
       } catch (e) {
+        console.log('[SW] Failed to parse as JSON, trying text');
         try {
           const text = await event.data.text();
           data.body = String(text);
+          console.log('[SW] Parsed as text:', text);
         } catch {
-          // fallback to default body
+          console.log('[SW] Failed to parse push data, using default');
         }
       }
+    } else {
+      console.log('[SW] Push event has no data, using default');
     }
 
     const options = {
       body: data.body,
-      icon: '/favicon.ico', // Update with your app icon
+      icon: '/favicon.ico',
       badge: '/favicon.ico',
       data: {
-        url: data.url || '/' // URL to open when notification is clicked
+        url: data.url || '/'
       },
-      tag: 'task-reminder', // Prevent duplicate notifications
+      tag: 'task-reminder',
       requireInteraction: true
     };
 
+    console.log('[SW] Showing notification:', data.title, options);
     return self.registration.showNotification(data.title || 'Task Reminder', options);
   })());
 });
 
 self.addEventListener('notificationclick', event => {
+  console.log('[SW] Notification clicked:', event.notification.tag);
   event.notification.close();
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       const url = event.notification.data.url;
+      console.log('[SW] Opening URL:', url);
 
-      // Check if there's already a window/tab open with the target URL
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
         if (client.url === url && 'focus' in client) {
+          console.log('[SW] Focusing existing window');
           return client.focus();
         }
       }
 
-      // If no suitable window is found, open a new one
       if (clients.openWindow) {
+        console.log('[SW] Opening new window');
         return clients.openWindow(url);
       }
     })
   );
-  console.log("NEW SW ACTIVE 🚀");
 });
