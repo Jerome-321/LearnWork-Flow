@@ -28,6 +28,13 @@ from django.http import JsonResponse
 
 def health_check(request):
     return JsonResponse({"status": "ok"})
+    from django.http import JsonResponse
+
+def home(request):
+    return JsonResponse({
+        "status": "ok",
+        "message": "LearnWork API is running 🚀"
+    })
 urlpatterns = [
     path('admin/', admin.site.urls),
 
