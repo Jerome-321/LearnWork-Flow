@@ -24,7 +24,10 @@ from api.views import (
 
 router = DefaultRouter()
 router.register(r'tasks', TaskViewSet)
+from django.http import JsonResponse
 
+def health_check(request):
+    return JsonResponse({"status": "ok"})
 urlpatterns = [
     path('admin/', admin.site.urls),
 
@@ -46,4 +49,5 @@ urlpatterns = [
     path("api/notifications/unsubscribe/", unsubscribe_push),
     path("api/notifications/check-deadlines/", check_deadline_tasks),
     path("api/notifications/send-test/", send_test_notification),
+    path('healthz', health_check),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
