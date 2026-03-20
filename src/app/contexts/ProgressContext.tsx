@@ -25,12 +25,14 @@ export function ProgressProvider({ children }: ProgressProviderProps) {
   const [loading, setLoadingState] = useState(true);
 
   // ✅ Core function: Fetch progress from backend
-  const fetchProgress = useCallback(async () => {
-    setLoading(true);
+  const fetchProgress = useCallback(async (showGlobal = false) => {
+    if (showGlobal) {
+      setLoading(true);
+    }
     setLoadingState(true);
 
     if (!user) {
-      setLoading(false);
+      if (showGlobal) setLoading(false);
       setLoadingState(false);
       return;
     }
@@ -54,16 +56,15 @@ export function ProgressProvider({ children }: ProgressProviderProps) {
     } catch (error) {
       console.error("Error fetching progress:", error);
     } finally {
-      setLoading(false);
+      if (showGlobal) setLoading(false);
+      setLoadingState(false);
     }
   }, [user, getAccessToken]);
 
   // ✅ Alias for explicit refresh calls
   const refreshProgress = useCallback(async () => {
-    setLoading(true);
     setLoadingState(true);
-    await fetchProgress();
-    setLoading(false);
+    await fetchProgress(true);
     setLoadingState(false);
   }, [fetchProgress]);
 
