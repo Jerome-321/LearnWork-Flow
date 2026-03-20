@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLoading } from '../contexts/LoadingContext';
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -13,6 +14,7 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export function usePushNotifications() {
   const { getAccessToken } = useAuth();
+  const { setLoading: setGlobalLoading } = useLoading();
 
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -64,6 +66,7 @@ export function usePushNotifications() {
   const subscribe = async () => {
     console.log('[PUSH] ========== SUBSCRIBE START ==========');
     setIsLoading(true);
+    setGlobalLoading(true);
     try {
       console.log('[PUSH] Requesting permission...');
       const perm = await requestNotificationPermission();
@@ -122,6 +125,7 @@ export function usePushNotifications() {
       throw error;
     } finally {
       setIsLoading(false);
+      setGlobalLoading(false);
     }
   };
 
@@ -147,6 +151,7 @@ export function usePushNotifications() {
       await checkSubscriptionStatus();
     } finally {
       setIsLoading(false);
+      setGlobalLoading(false);
     }
   };
 

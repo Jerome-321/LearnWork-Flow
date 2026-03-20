@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { UserProgress } from "../types/task";
 import { useAuth } from "./AuthContext";
+import { useLoading } from "./LoadingContext";
 
 interface ProgressContextType {
   progress: UserProgress | null;
@@ -19,13 +20,18 @@ const API_URL = import.meta.env.VITE_API_URL || "https://learnwork-flow.onrender
 
 export function ProgressProvider({ children }: ProgressProviderProps) {
   const { getAccessToken, user } = useAuth();
+  const { setLoading } = useLoading();
   const [progress, setProgress] = useState<UserProgress | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoadingState] = useState(true);
 
   // ✅ Core function: Fetch progress from backend
   const fetchProgress = useCallback(async () => {
+    setLoading(true);
+    setLoadingState(true);
+
     if (!user) {
       setLoading(false);
+      setLoadingState(false);
       return;
     }
 
@@ -55,7 +61,10 @@ export function ProgressProvider({ children }: ProgressProviderProps) {
   // ✅ Alias for explicit refresh calls
   const refreshProgress = useCallback(async () => {
     setLoading(true);
+    setLoadingState(true);
     await fetchProgress();
+    setLoading(false);
+    setLoadingState(false);
   }, [fetchProgress]);
 
   // ✅ Call fetchProgress on user login

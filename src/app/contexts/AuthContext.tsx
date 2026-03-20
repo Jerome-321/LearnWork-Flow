@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useLoading } from "./LoadingContext";
 
 interface AuthContextType {
   user: any | null;
@@ -19,6 +20,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<any | null>(null);
   const [session, setSession] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const { setLoading: setGlobalLoading } = useLoading();
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -33,50 +35,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const response = await fetch(`${API_URL}/login/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username: email,
-        password: password,
-      }),
-    });
+    setGlobalLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/login/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: email,
+          password: password,
+        }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.error || "Login failed");
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed");
+      }
+
+      localStorage.setItem("accessToken", data.access);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      setSession({ access_token: data.access });
+      setUser(data.user);
+    } finally {
+      setGlobalLoading(false);
     }
-
-    localStorage.setItem("accessToken", data.access);
-    localStorage.setItem("user", JSON.stringify(data.user));
-
-    setSession({ access_token: data.access });
-    setUser(data.user);
   };
 
   const signUp = async (email: string, password: string, name?: string) => {
-    const response = await fetch(`${API_URL}/register/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username: name || email,
-        email: email,
-        password: password,
-      }),
-    });
+    setGlobalLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/register/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: name || email,
+          email: email,
+          password: password,
+        }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.error || "Registration failed");
+      if (!response.ok) {
+        throw new Error(data.error || "Registration failed");
+      }
+
+      await signIn(email, password);
+    } finally {
+      setGlobalLoading(false);
     }
-
-    await signIn(email, password);
   };
 
   const signOut = async () => {
