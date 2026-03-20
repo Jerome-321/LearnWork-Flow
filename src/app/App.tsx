@@ -18,22 +18,20 @@ function App() {
   
   return (
     <ErrorBoundary>
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-        <AuthProvider>
+      <LoadingProvider>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+          <AuthProvider>
 
-          {/* ✅ GLOBAL LOADING WRAPPER */}
-          <LoadingProvider>
             <LoadingOverlay />
 
             <AuthGuard>
               <RouterProvider router={router} />
             </AuthGuard>
 
-          </LoadingProvider>
-
-          <Toaster />
-        </AuthProvider>
-      </ThemeProvider>
+            <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
+      </LoadingProvider>
     </ErrorBoundary>
   );
 }
