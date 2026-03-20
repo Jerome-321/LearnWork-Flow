@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Input } from "./ui/input";
 import { useAuth } from "../contexts/AuthContext";
-import { useLoading } from "../contexts/LoadingContext";
 import { Loader2, Trophy, Flame, CheckCircle, Search } from "lucide-react";
 
 interface LeaderboardUser {
@@ -18,7 +17,6 @@ const API_URL = import.meta.env.VITE_API_URL || "https://learnwork-flow.onrender
 
 export function PetTab() {
   const { getAccessToken } = useAuth();
-  const { setLoading: setGlobalLoading } = useLoading();
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -49,9 +47,8 @@ export function PetTab() {
       setError("Failed to load leaderboard");
     } finally {
       setLoading(false);
-      setGlobalLoading(false);
     }
-  }, [getAccessToken, setGlobalLoading]);
+  }, [getAccessToken]);
 
   useEffect(() => {
     fetchLeaderboard();
