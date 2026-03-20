@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { flushSync } from "react-dom";
 import { Task, UserProgress, UserSettings } from "../types/task";
 import { useAuth } from "../contexts/AuthContext";
-import { useLoading } from "../contexts/LoadingContext";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://learnwork-flow.onrender.com/api";
 
@@ -18,7 +17,6 @@ interface NotificationSettings {
 export function useTaskAPI() {
 
   const { getAccessToken, user } = useAuth();
-  const { setLoading } = useLoading();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [progress, setProgress] = useState<UserProgress | null>(null);
@@ -42,7 +40,6 @@ export function useTaskAPI() {
   const syncData = useCallback(async () => {
     if (!user) return;
 
-    setLoading(true);
     try {
       setLocalLoading(true);
 
@@ -77,7 +74,6 @@ export function useTaskAPI() {
       setIsOfflineMode(true);
     } finally {
       setLocalLoading(false);
-      setLoading(false);
     }
   }, [user, getAuthHeaders]);
 
@@ -106,8 +102,6 @@ export function useTaskAPI() {
   // ========================= CRUD =========================
 
   const addTask = async (task: Omit<Task, "id" | "createdAt"> & { image?: File | null }) => {
-    setLoading(true);
-
     try {
       const formData = new FormData();
 
@@ -135,14 +129,10 @@ export function useTaskAPI() {
 
     } catch (error) {
       console.error("Error adding task:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
-    setLoading(true);
-
     try {
       await fetch(API_URL + "/tasks/" + id + "/", {
         method: "PATCH",
@@ -154,14 +144,10 @@ export function useTaskAPI() {
 
     } catch (error) {
       console.error("Error updating task:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const deleteTask = async (id: string) => {
-    setLoading(true);
-
     try {
       await fetch(API_URL + "/tasks/" + id + "/", {
         method: "DELETE",
@@ -172,8 +158,6 @@ export function useTaskAPI() {
 
     } catch (error) {
       console.error("Error deleting task:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -184,7 +168,6 @@ export function useTaskAPI() {
     if (pendingToggleIds.has(id)) return;
 
     setPendingToggleIds(prev => new Set(prev).add(id));
-    setLoading(true);
 
     try {
       await fetch(API_URL + "/tasks/" + id + "/", {
@@ -202,8 +185,6 @@ export function useTaskAPI() {
         next.delete(id);
         return next;
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -212,7 +193,6 @@ export function useTaskAPI() {
   };
 
   const fetchNotificationSettings = async () => {
-    setLoading(true);
     try {
       const response = await fetch(API_URL + "/notifications/settings/", {
         headers: getAuthHeaders()
@@ -223,13 +203,10 @@ export function useTaskAPI() {
       }
     } catch (error) {
       console.error("Error fetching notification settings:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const updateNotificationSettings = async (updates: Partial<NotificationSettings>) => {
-    setLoading(true);
     try {
       const response = await fetch(API_URL + "/notifications/settings/", {
         method: "POST",
@@ -243,8 +220,6 @@ export function useTaskAPI() {
     } catch (error) {
       console.error("Error updating notification settings:", error);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
