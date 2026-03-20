@@ -10,23 +10,17 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# SECURITY
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-0e_b7+)1a-=vl=t80q^klky1%&oadnuqhqi@i_06bbsrohgsmo'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
 # Application definition
 
@@ -140,6 +134,7 @@ SIMPLE_JWT = {
 
 # VAPID key used for Web Push (must match the key used by your push service)
 # NOTE: In a production system, store these securely (environment vars, secret manager)
-VAPID_PUBLIC_KEY = "BNZMkUjHoOSgj7Pl8rgfmCrZxJelEhOYEnw8fCGMcJKCsTXypSHsV7zzijTyOpvHmxvhC9WQg-u-NAYOV-5PImE"
-VAPID_PRIVATE_KEY = "Q3VOt5SvHR57UuyiguSrmt9lSYR_z9xm7iZ7qi0C20c"
-VAPID_EMAIL = "mailto:jerome.natividad7704@gmail.com"  # Replace with your email
+VAPID_PUBLIC_KEY = os.environ.get("BNZMkUjHoOSgj7Pl8rgfmCrZxJelEhOYEnw8fCGMcJKCsTXypSHsV7zzijTyOpvHmxvhC9WQg-u-NAYOV-5PImE")
+VAPID_PRIVATE_KEY = os.environ.get("Q3VOt5SvHR57UuyiguSrmt9lSYR_z9xm7iZ7qi0C20c")
+VAPID_EMAIL = os.environ.get("mailto:jerome.natividad7704@gmail.com") # Replace with your email
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
