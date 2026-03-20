@@ -83,10 +83,9 @@ export function useTaskAPI() {
 
   useEffect(() => {
     if (!user) {
-      setLoading(false);
       setLocalLoading(false);
     }
-  }, [user, setLoading]);
+  }, [user]);
 
   // ========================= RELOAD HELPER =========================
 
