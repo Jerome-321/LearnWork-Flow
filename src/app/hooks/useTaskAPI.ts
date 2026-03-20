@@ -42,6 +42,7 @@ export function useTaskAPI() {
   const syncData = useCallback(async () => {
     if (!user) return;
 
+    setLoading(true);
     try {
       setLocalLoading(true);
 
@@ -76,12 +77,20 @@ export function useTaskAPI() {
       setIsOfflineMode(true);
     } finally {
       setLocalLoading(false);
+      setLoading(false);
     }
   }, [user, getAuthHeaders]);
 
   useEffect(() => {
     if (user) syncData();
   }, [user, syncData]);
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      setLocalLoading(false);
+    }
+  }, [user, setLoading]);
 
   // ========================= RELOAD HELPER =========================
 
@@ -126,6 +135,7 @@ export function useTaskAPI() {
 
     } catch (error) {
       console.error("Error adding task:", error);
+    } finally {
       setLoading(false);
     }
   };
@@ -144,6 +154,7 @@ export function useTaskAPI() {
 
     } catch (error) {
       console.error("Error updating task:", error);
+    } finally {
       setLoading(false);
     }
   };
@@ -161,6 +172,7 @@ export function useTaskAPI() {
 
     } catch (error) {
       console.error("Error deleting task:", error);
+    } finally {
       setLoading(false);
     }
   };
@@ -190,6 +202,7 @@ export function useTaskAPI() {
         next.delete(id);
         return next;
       });
+    } finally {
       setLoading(false);
     }
   };
@@ -199,6 +212,7 @@ export function useTaskAPI() {
   };
 
   const fetchNotificationSettings = async () => {
+    setLoading(true);
     try {
       const response = await fetch(API_URL + "/notifications/settings/", {
         headers: getAuthHeaders()
@@ -209,10 +223,13 @@ export function useTaskAPI() {
       }
     } catch (error) {
       console.error("Error fetching notification settings:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const updateNotificationSettings = async (updates: Partial<NotificationSettings>) => {
+    setLoading(true);
     try {
       const response = await fetch(API_URL + "/notifications/settings/", {
         method: "POST",
@@ -226,6 +243,8 @@ export function useTaskAPI() {
     } catch (error) {
       console.error("Error updating notification settings:", error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
