@@ -6,13 +6,18 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
+from django.conf import settings
 from django.utils import timezone
 
-from .models import Task, UserProgress, Notification, UserNotificationSettings
+from .models import Task, UserProgress, Notification, UserNotificationSettings, PushSubscription
 from .serializers import TaskSerializer, NotificationSerializer, UserNotificationSettingsSerializer
 
 from rest_framework.decorators import api_view, permission_classes
 from .ai.ai_service import generate_schedule
+
+# Push notification utilities
+from pywebpush import webpush, WebPushException
+import json
 
 # TASK VIEWSET
 from datetime import datetime
@@ -328,30 +333,94 @@ def mark_all_notifications_read(request):
     return Response({"success": True})
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def get_notification_settings(request):
     """
-    ✅ Get user's notification settings
+    ✅ Get or update user's notification settings
     """
     settings, created = UserNotificationSettings.objects.get_or_create(user=request.user)
+    
+    if request.method == 'POST':
+        serializer = UserNotificationSettingsSerializer(settings, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+    
     serializer = UserNotificationSettingsSerializer(settings)
     return Response(serializer.data)
 
 
+# ✅ NEW: VAPID public key endpoint for Web Push
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_vapid_public_key(request):
+    """Return the public VAPID key for push subscription."""
+    public_key = getattr(settings, "VAPID_PUBLIC_KEY", "")
+    print(f"[VAPID] Sending public key to {request.user.username}: {public_key[:50]}...")
+    return Response({
+        "public_key": public_key
+    })
+
+
+# ✅ NEW: Subscribe for push notifications
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def update_notification_settings(request):
-    """
-    ✅ Update user's notification settings
-    """
-    settings, created = UserNotificationSettings.objects.get_or_create(user=request.user)
-    serializer = UserNotificationSettingsSerializer(settings, data=request.data, partial=True)
+def subscribe_push(request):
+    """Store a push subscription for the current user."""
+    print(f"[SUBSCRIBE] Request from {request.user.username}")
+    print(f"[SUBSCRIBE] Request data: {request.data}")
     
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=400)
+    subscription = request.data.get("subscription")
+    if not subscription or not isinstance(subscription, dict):
+        print(f"[SUBSCRIBE] ERROR: Invalid subscription data")
+        return Response({"error": "subscription is required"}, status=400)
+
+    endpoint = subscription.get("endpoint")
+    keys = subscription.get("keys", {})
+    p256dh = keys.get("p256dh")
+    auth = keys.get("auth")
+
+    print(f"[SUBSCRIBE] Endpoint: {endpoint[:50] if endpoint else 'None'}...")
+    print(f"[SUBSCRIBE] p256dh: {p256dh[:20] if p256dh else 'None'}...")
+    print(f"[SUBSCRIBE] auth: {auth[:20] if auth else 'None'}...")
+
+    if not endpoint:
+        print(f"[SUBSCRIBE] ERROR: Missing endpoint")
+        return Response({"error": "subscription.endpoint is required"}, status=400)
+
+    try:
+        obj, created = PushSubscription.objects.update_or_create(
+            user=request.user,
+            endpoint=endpoint,
+            defaults={
+                "p256dh": p256dh,
+                "auth": auth
+            }
+        )
+        print(f"[SUBSCRIBE] {'Created' if created else 'Updated'} subscription for {request.user.username}")
+        return Response({"success": True, "created": created})
+    except Exception as e:
+        print(f"[SUBSCRIBE] ERROR: {str(e)}")
+        return Response({"error": str(e)}, status=500)
+
+
+# ✅ NEW: Unsubscribe from push notifications
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def unsubscribe_push(request):
+    """Remove a push subscription for the current user."""
+    endpoint = request.data.get("endpoint")
+    print(f"[UNSUBSCRIBE] Request from {request.user.username}")
+    print(f"[UNSUBSCRIBE] Endpoint: {endpoint[:50] if endpoint else 'None'}...")
+    
+    if not endpoint:
+        return Response({"error": "endpoint is required"}, status=400)
+
+    deleted_count, _ = PushSubscription.objects.filter(user=request.user, endpoint=endpoint).delete()
+    print(f"[UNSUBSCRIBE] Deleted {deleted_count} subscription(s)")
+    return Response({"success": True, "deleted": deleted_count})
 
 
 # ✅ NEW: Helper function to create notifications
@@ -446,7 +515,129 @@ def check_and_notify_deadline_tasks(user):
     return notifications_created
 
 
-# ✅ NEW: API Endpoint to check and notify about deadline tasks
+# ✅ NEW: Helper to send push notifications to a user's subscriptions
+def send_push_to_user(user, payload):
+    """Send a Web Push notification payload to all subscriptions for a user."""
+    print(f"[PUSH] Attempting to send push to {user.username}")
+    print(f"[PUSH] Payload: {payload}")
+    
+    subscriptions = PushSubscription.objects.filter(user=user)
+    print(f"[PUSH] Found {subscriptions.count()} subscription(s)")
+    
+    if not subscriptions.exists():
+        print(f"[PUSH] No subscriptions found")
+        return {
+            "success": False,
+            "message": "No push subscriptions found for this user.",
+            "errors": []
+        }
+
+    vapid_private_key = getattr(settings, 'VAPID_PRIVATE_KEY', None)
+    vapid_email = getattr(settings, 'VAPID_EMAIL', None)
+
+    print(f"[PUSH] VAPID private key: {vapid_private_key[:20] if vapid_private_key else 'None'}...")
+    print(f"[PUSH] VAPID email: {vapid_email}")
+
+    if not vapid_private_key or not vapid_email:
+        print(f"[PUSH] ERROR: VAPID configuration missing")
+        return {
+            "success": False,
+            "message": "VAPID configuration missing."
+        }
+
+    vapid_claims = {
+        "sub": vapid_email
+    }
+
+    payload_str = json.dumps(payload)
+    errors = []
+    success_count = 0
+
+    for subscription in subscriptions:
+        try:
+            print(f"[PUSH] Sending to endpoint: {subscription.endpoint[:50]}...")
+            webpush(
+                subscription_info={
+                    "endpoint": subscription.endpoint,
+                    "keys": {
+                        "p256dh": subscription.p256dh,
+                        "auth": subscription.auth
+                    }
+                },
+                data=payload_str,
+                vapid_private_key=vapid_private_key,
+                vapid_claims=vapid_claims,
+                ttl=60
+            )
+            success_count += 1
+            print(f"[PUSH] Successfully sent to subscription {subscription.id}")
+        except WebPushException as e:
+            error_msg = str(e)
+            print(f"[PUSH] WebPushException: {error_msg}")
+            print(f"[PUSH] Full error details: {repr(e)}")
+            errors.append(error_msg)
+            # If subscription is expired/invalid, delete it
+            if "410" in error_msg or "404" in error_msg:
+                print(f"[PUSH] Deleting invalid subscription {subscription.id}")
+                subscription.delete()
+        except Exception as e:
+            error_msg = str(e)
+            print(f"[PUSH] Exception: {error_msg}")
+            print(f"[PUSH] Full exception details: {repr(e)}")
+            errors.append(error_msg)
+
+    print(f"[PUSH] Sent to {success_count}/{subscriptions.count()} subscriptions")
+    return {
+        "success": success_count > 0,
+        "sent_count": success_count,
+        "errors": errors
+    }
+
+
+# ✅ NEW: Test notification endpoint
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_test_notification(request):
+    """Send a test push notification to the current user (if subscribed)."""
+    print(f"[TEST] Test notification request from {request.user.username}")
+    
+    try:
+        payload = {
+            "title": "Test Notification",
+            "body": "This is a test push notification from LearnWork!",
+            "url": "/",
+            "test": True
+        }
+
+        result = send_push_to_user(request.user, payload)
+        print(f"[TEST] Result: {result}")
+
+        if result.get("success"):
+            return Response({
+                "success": True, 
+                "message": f"Test notification sent to {result.get('sent_count', 0)} device(s)."
+            })
+
+        errors = result.get("errors")
+        if not errors:
+            return Response({
+                "success": False, 
+                "message": result.get("message", "No subscriptions found."), 
+                "errors": []
+            })
+
+        return Response({
+            "success": False, 
+            "message": "Failed to send test notification.", 
+            "errors": errors
+        }, status=500)
+    except Exception as e:
+        print(f"[TEST] ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response({"success": False, "message": f"Error: {str(e)}"}, status=500)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def check_deadline_tasks(request):

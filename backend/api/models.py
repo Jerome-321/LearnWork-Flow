@@ -24,6 +24,12 @@ class Task(models.Model):
     image = models.ImageField(upload_to='task_images/', null=True, blank=True)
     link = models.URLField(null=True, blank=True)
 
+    # Notification flags to prevent duplicates
+    notified_1d = models.BooleanField(default=False)
+    notified_5h = models.BooleanField(default=False)
+    notified_1h = models.BooleanField(default=False)
+    notified_5m = models.BooleanField(default=False)
+
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
 
@@ -68,6 +74,18 @@ class UserNotificationSettings(models.Model):
     
     def __str__(self):
         return f"{self.user.username} Notification Settings"
+
+
+# ✅ NEW: Store push subscriptions so we can avoid duplicates and manage unsubscription
+class PushSubscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="push_subscriptions")
+    endpoint = models.TextField(unique=True)
+    p256dh = models.CharField(max_length=512, blank=True, null=True)
+    auth = models.CharField(max_length=512, blank=True, null=True)
+    createdAt = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"PushSubscription({self.user.username}, {self.endpoint})"
 
 
 # ✅ NEW: Store notifications for display
