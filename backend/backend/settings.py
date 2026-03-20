@@ -12,7 +12,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
-
+from dotenv import load_dotenv
+load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY
@@ -134,7 +135,7 @@ SIMPLE_JWT = {
 
 # VAPID key used for Web Push (must match the key used by your push service)
 # NOTE: In a production system, store these securely (environment vars, secret manager)
-VAPID_PUBLIC_KEY = os.environ.get("BNZMkUjHoOSgj7Pl8rgfmCrZxJelEhOYEnw8fCGMcJKCsTXypSHsV7zzijTyOpvHmxvhC9WQg-u-NAYOV-5PImE")
-VAPID_PRIVATE_KEY = os.environ.get("Q3VOt5SvHR57UuyiguSrmt9lSYR_z9xm7iZ7qi0C20c")
-VAPID_EMAIL = os.environ.get("mailto:jerome.natividad7704@gmail.com") # Replace with your email
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
+VAPID_EMAIL = os.environ.get("VAPID_ADMIN_EMAIL")
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

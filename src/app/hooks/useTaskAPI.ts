@@ -4,7 +4,7 @@ import { Task, UserProgress, UserSettings } from "../types/task";
 import { useAuth } from "../contexts/AuthContext";
 import { useLoading } from "../contexts/LoadingContext";
 
-const API_URL = "http://127.0.0.1:8000/api";
+const API_URL = import.meta.env.VITE_API_URL || "https://learnwork-flow.onrender.com/api";
 
 interface NotificationSettings {
   notifications_enabled: boolean;

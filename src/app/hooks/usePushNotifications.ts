@@ -21,6 +21,8 @@ export function usePushNotifications() {
   const [isSupported, setIsSupported] = useState(false);
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
 
+  const API_URL = import.meta.env.VITE_API_URL || "https://learnwork-flow.onrender.com/api";
+
   useEffect(() => {
     const supported = 'serviceWorker' in navigator && 'PushManager' in window;
     setIsSupported(supported);
@@ -35,7 +37,7 @@ export function usePushNotifications() {
 
     const token = getAccessToken();
     if (token) {
-      fetch('http://127.0.0.1:8000/api/notifications/vapid-public-key/', {
+      fetch(`${API_URL}/notifications/vapid-public-key/`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => res.json())
@@ -91,7 +93,7 @@ export function usePushNotifications() {
       const subscriptionData = { subscription: sub.toJSON() };
       console.log('[PUSH] Sending to backend:', subscriptionData);
 
-      const response = await fetch('http://127.0.0.1:8000/api/notifications/subscribe/', {
+      const response = await fetch(`${API_URL}/notifications/subscribe/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -132,7 +134,7 @@ export function usePushNotifications() {
       if (sub) {
         await sub.unsubscribe();
 
-        await fetch('http://127.0.0.1:8000/api/notifications/unsubscribe/', {
+        await fetch(`${API_URL}/notifications/unsubscribe/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
