@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTaskAPI } from "../hooks/useTaskAPI";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useAuth } from "../contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -38,7 +39,69 @@ import {
 
 export function SettingsPage() {
   const { settings, updateSettings, notificationSettings, updateNotificationSettings, fetchNotificationSettings } = useTaskAPI();
-  const { signOut, user } = useAuth();
+  const { isSubscribed, isLoading, permission, isSupported, subscriptionChecked, subscribe, unsubscribe, requestNotificationPermission, checkSubscriptionStatus } = usePushNotifications();
+  const { signOut, user, getAccessToken } = useAuth();
+
+  const sendTestNotification = async () => {
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        toast.error('Not authenticated');
+        return;
+      }
+
+      if (!isSupported) {
+        toast.error('Push notifications are not supported in this browser');
+        return;
+      }
+
+      // Ensure permission is granted
+      let currentPermission = permission;
+      if (currentPermission === 'default') {
+        currentPermission = await requestNotificationPermission();
+      }
+
+      if (currentPermission === 'denied') {
+        toast.error('Notification permission is denied. Enable it in browser settings.');
+        return;
+      }
+
+      // Ensure subscription status is up to date
+      if (!subscriptionChecked) {
+        await checkSubscriptionStatus();
+      }
+
+      if (!isSubscribed) {
+        try {
+          await subscribe();
+          await checkSubscriptionStatus();
+        } catch (error) {
+          console.error('Subscription failed during test send:', error);
+          toast.error('Unable to enable push notifications. Please try again.');
+          return;
+        }
+      }
+
+      const response = await fetch('http://127.0.0.1:8000/api/notifications/send-test/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success('Test notification sent! Check your device.');
+      } else {
+        toast.error(data.message || 'Failed to send test notification');
+      }
+    } catch (error) {
+      console.error('Test notification failed:', error);
+      toast.error('Failed to send test notification');
+    }
+  };
   const [displayName, setDisplayName] = useState(settings?.displayName || "");
   const [email, setEmail] = useState(settings?.email || user?.email || "");
   
@@ -155,12 +218,49 @@ export function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Main notifications toggle */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-4">
                 <div className="space-y-0.5">
                   <Label>Notifications Enabled</Label>
                   <p className="text-sm text-muted-foreground">
                     Turn off to disable all notifications
                   </p>
+                  {permission === 'default' && isSupported && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const result = await requestNotificationPermission();
+                          if (result === 'granted') {
+                            toast.success('Notification permission granted');
+                          } else {
+                            toast.error('Notification permission not granted');
+                          }
+                        } catch (err) {
+                          toast.error('Failed to request notification permission');
+                        }
+                      }}
+                      disabled={isLoading}
+                    >
+                      Request permission
+                    </Button>
+                  )}
+                  {isSupported && permission === 'granted' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await sendTestNotification();
+                        } catch {
+                          // errors are handled inside sendTestNotification
+                        }
+                      }}
+                      disabled={isLoading}
+                    >
+                      Send test notification
+                    </Button>
+                  )}
                 </div>
                 <Switch
                   checked={localNotifSettings?.notifications_enabled ?? true}
@@ -255,6 +355,119 @@ export function SettingsPage() {
                       onCheckedChange={(checked) => 
                         handleNotificationSettingChange("daily_reminders", checked)
                       }
+                    />
+                  </div>
+
+                  <Separator />
+
+                  {/* Push Notification Toggle */}
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Push Notifications</Label>
+                      <p className="text-sm text-muted-foreground">
+                        {!subscriptionChecked ? 'Checking notification status...' : 'Get notified 1 day and 5 hours before due tasks'}
+                      </p>
+                      {!isSupported && (
+                        <p className="text-sm text-red-500">
+                          Push notifications not supported in this browser
+                        </p>
+                      )}
+                      {permission === 'default' && (
+                        <div className="flex flex-col gap-2">
+                          <p className="text-sm text-muted-foreground">
+                            Notifications are not granted yet. You need to grant permission to receive reminders.
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                const result = await requestNotificationPermission();
+                                if (result === 'granted') {
+                                  toast.success('Notification permission granted');
+                                } else {
+                                  toast.error('Notification permission denied');
+                                }
+                              } catch (err) {
+                                toast.error('Failed to request notification permission');
+                              }
+                            }}
+                            disabled={isLoading || !isSupported}
+                          >
+                            Request permission
+                          </Button>
+                        </div>
+                      )}
+                      {permission === 'denied' && (
+                        <p className="text-sm text-red-500">
+                          Permission denied. Enable notifications in browser settings.
+                        </p>
+                      )}
+
+                      {permission === 'granted' && isSupported && (
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant={isSubscribed ? 'destructive' : 'secondary'}
+                            onClick={async () => {
+                              try {
+                                if (isSubscribed) {
+                                  await unsubscribe();
+                                  toast.success('Task reminders disabled');
+                                } else {
+                                  await subscribe();
+                                  toast.success('Task reminders enabled');
+                                }
+                              } catch (error) {
+                                if (error instanceof Error && error.message === 'Permission denied') {
+                                  toast.error('Permission denied');
+                                } else {
+                                  toast.error('Failed to update push notifications');
+                                }
+                              }
+                            }}
+                            disabled={isLoading || !subscriptionChecked}
+                          >
+                            {isSubscribed ? 'Disable push notifications' : 'Enable push notifications'}
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                await sendTestNotification();
+                              } catch {
+                                // errors handled inside sendTestNotification
+                              }
+                            }}
+                            disabled={isLoading || !isSubscribed}
+                          >
+                            Send test notification
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <Switch
+                      checked={isSubscribed}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          if (checked) {
+                            await subscribe();
+                            toast.success("Task reminders enabled");
+                          } else {
+                            await unsubscribe();
+                            toast.success("Task reminders disabled");
+                          }
+                        } catch (error) {
+                          if (error instanceof Error && error.message === 'Permission denied') {
+                            toast.error("Permission denied");
+                          } else {
+                            toast.error("Failed to update push notifications");
+                          }
+                        }
+                      }}
+                      disabled={isLoading || !isSupported || permission === 'denied' || !subscriptionChecked}
                     />
                   </div>
                 </>

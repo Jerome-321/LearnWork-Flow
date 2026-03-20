@@ -6,6 +6,15 @@ import { useLoading } from "../contexts/LoadingContext";
 
 const API_URL = "http://127.0.0.1:8000/api";
 
+interface NotificationSettings {
+  notifications_enabled: boolean;
+  task_completed: boolean;
+  task_reminders: boolean;
+  pet_updates: boolean;
+  ai_suggestions: boolean;
+  daily_reminders: boolean;
+}
+
 export function useTaskAPI() {
 
   const { getAccessToken, user } = useAuth();
@@ -14,6 +23,7 @@ export function useTaskAPI() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
 
   const [loading, setLocalLoading] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -43,9 +53,13 @@ export function useTaskAPI() {
       const progressResponse = await fetch(API_URL + "/progress/", { headers });
       const progressData = progressResponse.ok ? await progressResponse.json() : null;
 
+      const notifResponse = await fetch(API_URL + "/notifications/settings/", { headers });
+      const notifData = notifResponse.ok ? await notifResponse.json() : null;
+
       flushSync(() => {
         setTasks(data);
         setProgress(progressData);
+        setNotificationSettings(notifData);
       });
 
       setSettings({
@@ -180,16 +194,55 @@ export function useTaskAPI() {
     }
   };
 
+  const updateSettings = async (updates: Partial<UserSettings>) => {
+    setSettings(prev => prev ? { ...prev, ...updates } : null);
+  };
+
+  const fetchNotificationSettings = async () => {
+    try {
+      const response = await fetch(API_URL + "/notifications/settings/", {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotificationSettings(data);
+      }
+    } catch (error) {
+      console.error("Error fetching notification settings:", error);
+    }
+  };
+
+  const updateNotificationSettings = async (updates: Partial<NotificationSettings>) => {
+    try {
+      const response = await fetch(API_URL + "/notifications/settings/", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(updates)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotificationSettings(data);
+      }
+    } catch (error) {
+      console.error("Error updating notification settings:", error);
+      throw error;
+    }
+  };
+
   return {
     tasks,
     progress,
     settings,
+    notificationSettings,
     loading,
     isOfflineMode,
     addTask,
     updateTask,
     deleteTask,
     toggleTaskComplete,
-    syncData
+    syncData,
+    updateSettings,
+    fetchNotificationSettings,
+    updateNotificationSettings
   };
 }

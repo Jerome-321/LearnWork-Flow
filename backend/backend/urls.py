@@ -14,8 +14,11 @@ from api.views import (
     mark_notification_read,
     mark_all_notifications_read,
     get_notification_settings,
-    update_notification_settings,
-    check_deadline_tasks
+    get_vapid_public_key,
+    subscribe_push,
+    unsubscribe_push,
+    check_deadline_tasks,
+    send_test_notification
 )
 
 
@@ -37,9 +40,10 @@ urlpatterns = [
     path("api/notifications/", get_notifications),
     path("api/notifications/mark-read/", mark_notification_read),
     path("api/notifications/mark-all-read/", mark_all_notifications_read),
-    path("api/notification-settings/", get_notification_settings),
-    path("api/notification-settings/update/", update_notification_settings),
-    
-    # ✅ NEW: Deadline checking endpoint
+    path("api/notifications/settings/", get_notification_settings),
+    path("api/notifications/vapid-public-key/", get_vapid_public_key),
+    path("api/notifications/subscribe/", subscribe_push),
+    path("api/notifications/unsubscribe/", unsubscribe_push),
     path("api/notifications/check-deadlines/", check_deadline_tasks),
+    path("api/notifications/send-test/", send_test_notification),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
