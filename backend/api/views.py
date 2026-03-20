@@ -22,6 +22,8 @@ import json
 # TASK VIEWSET
 from datetime import datetime
 
+from rest_framework.permissions import AllowAny
+
 def format_time_12h(time_str):
     try:
         t = datetime.strptime(time_str, "%H:%M")
@@ -354,7 +356,7 @@ def get_notification_settings(request):
 
 # ✅ NEW: VAPID public key endpoint for Web Push
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def get_vapid_public_key(request):
     """Return the public VAPID key for push subscription."""
     public_key = getattr(settings, "VAPID_PUBLIC_KEY", "")
