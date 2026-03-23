@@ -139,13 +139,13 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
-    "https://learnwork-flow-1.onrender.com",
+    "https://learnwork-flow.onrender.com",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://learnwork-flow-1.onrender.com",
+    "https://learnwork-flow.onrender.com",
 ]
 
 EMAIL_HOST = 'smtp.gmail.com'
