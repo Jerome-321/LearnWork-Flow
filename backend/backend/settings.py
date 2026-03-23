@@ -21,7 +21,10 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = [
+    "learnwork-flow.onrender.com",
+    "learnwork-flow-1.onrender.com",
+]
 
 # Application definition
 
@@ -132,6 +135,18 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+CORS_ALLOW_ALL_ORIGINS = False
+
+CORS_ALLOWED_ORIGINS = [
+    "https://learnwork-flow-1.onrender.com",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://learnwork-flow-1.onrender.com",
+]
 
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
