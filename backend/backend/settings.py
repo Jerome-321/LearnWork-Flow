@@ -133,9 +133,15 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
 # VAPID key used for Web Push (must match the key used by your push service)
 # NOTE: In a production system, store these securely (environment vars, secret manager)
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
 VAPID_EMAIL = os.environ.get("VAPID_ADMIN_EMAIL")
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+EMAIL_HOST_USER = os.getenv("EMAIL_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_PASS")
+DEFAULT_FROM_EMAIL = "LearnWork-Flow <jerome.natividad7704@gmail.com>"

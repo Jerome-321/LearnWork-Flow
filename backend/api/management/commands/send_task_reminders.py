@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
 from api.models import Task, PushSubscription
+from api.utils import send_task_email  # 🔥 ADD THIS
 from pywebpush import webpush, WebPushException
 import logging
 
@@ -18,7 +19,6 @@ class Command(BaseCommand):
         tasks_processed = 0
         notifications_sent = 0
 
-        # Get all incomplete tasks with due dates
         tasks = Task.objects.filter(
             completed=False,
             dueDate__isnull=False
@@ -26,31 +26,52 @@ class Command(BaseCommand):
 
         for task in tasks:
             tasks_processed += 1
+
             time_diff = task.dueDate - now
             hours_remaining = time_diff.total_seconds() / 3600
             minutes_remaining = time_diff.total_seconds() / 60
 
-            # Check each notification threshold
+            # 🔹 1 DAY
             if hours_remaining <= 24 and hours_remaining > 23 and not task.notified_1d:
+
                 self.send_notification(task, '1 day', '/tasks')
+
+                # 🔥 EMAIL
+                send_task_email(task.user.email, task.title, "1 day",task.id)
+
                 task.notified_1d = True
                 task.save()
                 notifications_sent += 1
 
+            # 🔹 5 HOURS
             elif hours_remaining <= 5 and hours_remaining > 4 and not task.notified_5h:
+
                 self.send_notification(task, '5 hours', '/tasks')
+
+                send_task_email(task.user.email, task.title, "5 hours",task.id)
+
                 task.notified_5h = True
                 task.save()
                 notifications_sent += 1
 
+            # 🔹 1 HOUR
             elif hours_remaining <= 1 and hours_remaining > 0.75 and not task.notified_1h:
+
                 self.send_notification(task, '1 hour', '/tasks')
+
+                send_task_email(task.user.email, task.title, "1 hour", task.id)
+
                 task.notified_1h = True
                 task.save()
                 notifications_sent += 1
 
+            # 🔹 5 MINUTES
             elif minutes_remaining <= 5 and minutes_remaining > 0 and not task.notified_5m:
+
                 self.send_notification(task, '5 minutes', '/tasks')
+
+                send_task_email(task.user.email, task.title, "5 minutes",task.id)
+
                 task.notified_5m = True
                 task.save()
                 notifications_sent += 1
@@ -64,7 +85,6 @@ class Command(BaseCommand):
     def send_notification(self, task, time_remaining, url):
         """Send push notification to all subscriptions for this user"""
         try:
-            # Get all push subscriptions for this user
             subscriptions = PushSubscription.objects.filter(user=task.user)
 
             if not subscriptions.exists():
@@ -108,9 +128,9 @@ class Command(BaseCommand):
                         vapid_claims=vapid_claims
                     )
                     logger.info(f'Sent notification for task {task.id} to user {task.user.id}')
+
                 except WebPushException as e:
                     logger.error(f'Failed to send push notification: {e}')
-                    # Continue with other subscriptions even if one fails
 
         except Exception as e:
             logger.error(f'Error sending notification for task {task.id}: {e}')

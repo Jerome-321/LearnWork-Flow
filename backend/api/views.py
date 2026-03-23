@@ -137,6 +137,9 @@ class TaskViewSet(viewsets.ModelViewSet):
 # REGISTER
 
 
+from api.utils import generate_otp, send_otp_email
+from .models import EmailOTP
+
 @api_view(['POST'])
 def register(request):
 
@@ -153,22 +156,39 @@ def register(request):
         password=password
     )
 
-    
     UserProgress.objects.create(user=user)
 
-    refresh = RefreshToken.for_user(user)
+    otp = generate_otp()
+
+    EmailOTP.objects.update_or_create(
+        user=user,
+        defaults={"otp": otp, "is_verified": False}
+    )
+
+    send_otp_email(email, otp)
 
     return Response({
-        "access": str(refresh.access_token),
-        "refresh": str(refresh),
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email
-        }
+        "message": "OTP sent to email"
     })
 
+@api_view(['POST'])
+def verify_otp(request):
+    email = request.data.get("email")
+    otp_input = request.data.get("otp")
 
+    try:
+        user = User.objects.get(email=email)
+        otp_obj = EmailOTP.objects.get(user=user)
+
+        if otp_obj.otp == otp_input:
+            otp_obj.is_verified = True
+            otp_obj.save()
+            return Response({"message": "Verified successfully"})
+
+        return Response({"error": "Invalid OTP"}, status=400)
+
+    except:
+        return Response({"error": "User not found"}, status=404)
 
 # LOGIN
 
@@ -187,6 +207,11 @@ def login(request):
 
     if user is None:
         return Response({"error": "Invalid credentials"}, status=401)
+
+    otp_obj = EmailOTP.objects.get(user=user)
+
+    if not otp_obj.is_verified:
+        return Response({"error": "Email not verified"}, status=403)
 
     refresh = RefreshToken.for_user(user)
 
