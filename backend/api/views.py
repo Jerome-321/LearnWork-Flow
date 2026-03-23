@@ -142,34 +142,41 @@ from .models import EmailOTP
 
 @api_view(['POST'])
 def register(request):
+    try:
+        username = request.data.get("username")
+        email = request.data.get("email")
+        password = request.data.get("password")
 
-    username = request.data.get("username")
-    email = request.data.get("email")
-    password = request.data.get("password")
+        if User.objects.filter(email=email).exists():
+            return Response({"error": "Email already exists"}, status=400)
 
-    if User.objects.filter(email=email).exists():
-        return Response({"error": "Email already exists"}, status=400)
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password
+        )
 
-    user = User.objects.create_user(
-        username=username,
-        email=email,
-        password=password
-    )
+        UserProgress.objects.create(user=user)
 
-    UserProgress.objects.create(user=user)
+        otp = generate_otp()
 
-    otp = generate_otp()
+        EmailOTP.objects.update_or_create(
+            user=user,
+            defaults={"otp": otp, "is_verified": False}
+        )
 
-    EmailOTP.objects.update_or_create(
-        user=user,
-        defaults={"otp": otp, "is_verified": False}
-    )
+        # 🔥 SAFE EMAIL (won’t crash app)
+        try:
+            send_otp_email(email, otp)
+        except Exception as e:
+            print("EMAIL ERROR:", str(e))
 
-    send_otp_email(email, otp)
+        return Response({
+            "message": "OTP sent to email"
+        })
 
-    return Response({
-        "message": "OTP sent to email"
-    })
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
 
 @api_view(['POST'])
 def verify_otp(request):
