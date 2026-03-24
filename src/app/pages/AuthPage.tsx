@@ -16,6 +16,7 @@ export function AuthPage() {
   const [showOTPVerification, setShowOTPVerification] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
   const [otpValue, setOtpValue] = useState("");
+  const [activeTab, setActiveTab] = useState("signin");
 
   const [signInData, setSignInData] = useState({
     email: "",
@@ -63,12 +64,8 @@ export function AuthPage() {
       setPendingEmail(signUpData.email);
       setShowOTPVerification(true);
       
-      if (result.otp) {
-        // For development: show the OTP in a toast
-        toast.success(`Account created! Your verification code is: ${result.otp}`, { duration: 10000 });
-      } else {
-        toast.success("Account created! Please check your email for the verification code.");
-      }
+      // OTP is sent to email, don't show it in toast for production
+      toast.success("Account created! Please check your email for the verification code.");
     } catch (error: any) {
       console.error("Signup error:", error);
       
@@ -103,6 +100,7 @@ export function AuthPage() {
       toast.success("Email verified successfully! You can now sign in.");
       setShowOTPVerification(false);
       setOtpValue("");
+      setActiveTab("signin"); // Switch to sign in tab after verification
     } catch (error: any) {
       toast.error(error.message || "Invalid OTP code. Please try again.");
     } finally {
@@ -202,7 +200,7 @@ export function AuthPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="signin" className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="signin">Sign In</TabsTrigger>
                   <TabsTrigger value="signup">Sign Up</TabsTrigger>
