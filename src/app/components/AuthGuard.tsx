@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { LoginPage } from "../pages/LoginPage";
+import { AuthPage } from "../pages/AuthPage";
 
 export function AuthGuard({ children }: { children: ReactNode }) {
   console.log("AuthGuard rendering...");
@@ -20,7 +20,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    return <LoginPage />;
+    return <AuthPage />;
   }
 
   return <>{children}</>;
