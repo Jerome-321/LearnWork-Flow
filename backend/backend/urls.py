@@ -9,6 +9,7 @@ from api.views import (
     TaskViewSet, 
     login, 
     register,
+    verify_otp,
     progress,
     leaderboard,
     ai_analyze_task,
@@ -54,6 +55,7 @@ urlpatterns = [
     # API custom endpoints
     path('api/login/', login),
     path('api/register/', register),
+    path('api/verify-otp/', verify_otp),
     path('api/progress/', progress),
     path('api/leaderboard/', leaderboard),
     path("api/ai/analyze/", ai_analyze_task),
