@@ -147,9 +147,6 @@ def register(request):
         email = request.data.get("email")
         password = request.data.get("password")
 
-        if User.objects.filter(email=email).exists():
-            return Response({"error": "Email already exists"}, status=400)
-
         user = User.objects.create_user(
             username=username,
             email=email,
@@ -165,18 +162,15 @@ def register(request):
             defaults={"otp": otp, "is_verified": False}
         )
 
-        # 🔥 SAFE EMAIL (won’t crash app)
-        try:
-            send_otp_email(email, otp)
-        except Exception as e:
-            print("EMAIL ERROR:", str(e))
+        # ❌ TEMP DISABLE EMAIL
+        # send_otp_email(email, otp)
 
-        return Response({
-            "message": "OTP sent to email"
-        })
+        return Response({"message": "OK DEBUG"})
 
     except Exception as e:
+        print("ERROR:", str(e))  # 🔥 THIS WILL SHOW IN RENDER LOGS
         return Response({"error": str(e)}, status=500)
+    
 
 @api_view(['POST'])
 def verify_otp(request):
