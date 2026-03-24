@@ -73,7 +73,7 @@ export function ProgressProvider({ children }: ProgressProviderProps) {
     if (user) {
       fetchProgress();
     }
-  }, [user, fetchProgress]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ✅ Auto-sync every 30 seconds for real-time updates
   useEffect(() => {
@@ -81,10 +81,10 @@ export function ProgressProvider({ children }: ProgressProviderProps) {
 
     const interval = setInterval(() => {
       fetchProgress();
-    }, 30000); // 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
-  }, [user, fetchProgress]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const value: ProgressContextType = {
     progress,

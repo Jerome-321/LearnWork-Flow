@@ -79,7 +79,7 @@ export function useTaskAPI() {
 
   useEffect(() => {
     if (user) syncData();
-  }, [user, syncData]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!user) {
