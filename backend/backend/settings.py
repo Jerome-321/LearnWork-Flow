@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from corsheaders.defaults import default_headers
 load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -140,15 +141,14 @@ SIMPLE_JWT = {
 # ========================
 # ✅ CORS (FINAL FIX)
 # ========================
-from corsheaders.defaults import default_headers
 
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True  # Temporarily allow all for testing
 
 CORS_ALLOWED_ORIGINS = [
     "https://learnwork-flow-1.onrender.com",
     "https://learnwork-flow.onrender.com",
-    "http://localhost:5173",  # For local development
-    "http://localhost:3000",  # Alternative local port
+    "http://localhost:5173",
+    "http://localhost:3000",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -166,8 +166,6 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     "content-type",
     "authorization",
 ]
-
-CORS_ALLOW_CREDENTIALS = True
 
 # 🔥 IMPORTANT: allow default headers
 CORS_ALLOW_HEADERS = list(default_headers) + [
