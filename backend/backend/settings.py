@@ -140,17 +140,19 @@ SIMPLE_JWT = {
 # ========================
 # ✅ CORS (FINAL FIX)
 # ========================
+from corsheaders.defaults import default_headers
+
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
-    "https://learnwork-flow-1.onrender.com",  # 🔥 YOUR FRONTEND
+    "https://learnwork-flow-1.onrender.com",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_HEADERS = [
+# 🔥 IMPORTANT: allow default headers
+CORS_ALLOW_HEADERS = list(default_headers) + [
     "authorization",
-    "content-type",
 ]
 
 CORS_ALLOW_METHODS = [
@@ -161,14 +163,6 @@ CORS_ALLOW_METHODS = [
     "DELETE",
     "OPTIONS",
 ]
-
-# ========================
-# ✅ CSRF (RENDER FIX)
-# ========================
-CSRF_TRUSTED_ORIGINS = [
-    "https://learnwork-flow-1.onrender.com",
-]
-
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
