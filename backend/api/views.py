@@ -189,20 +189,21 @@ def register(request):
             defaults={"otp": otp, "is_verified": False}
         )
 
-        # 🚫 TEMPORARILY DISABLED: Email sending is timing out in production
-        # This will be re-enabled once email is properly configured in Render
-        # For now, OTP is returned in response for testing
-        # 
-        # Uncomment to enable email when EMAIL_USER and EMAIL_PASS are set in Render:
-        # try:
-        #     send_otp_email(email, otp)
-        #     print(f"✅ OTP email sent to {email}")
-        # except Exception as email_error:
-        #     print(f"⚠️ Email sending failed: {str(email_error)}")
+        # � Send OTP email
+        try:
+            from .utils import send_otp_email
+            send_otp_email(email, otp)
+            print(f"✅ OTP email sent to {email}")
+        except Exception as email_error:
+            print(f"⚠️ Email sending failed: {str(email_error)}")
+            # Don't fail registration if email fails - user can retry
 
         return Response({
-            "message": "Account created successfully. Check console for OTP (temporary).",
-            "otp": otp  # 🔧 TEMPORARY: OTP returned in response for development
+            "message": "Account created successfully! Check your email for the OTP code.",
+            "user": {
+                "username": username,
+                "email": email
+            }
         }, status=201)
 
     except Exception as e:
