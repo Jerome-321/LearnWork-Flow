@@ -55,7 +55,7 @@ export function useTaskAPI() {
       const notifData = notifResponse.ok ? await notifResponse.json() : null;
 
       flushSync(() => {
-        setTasks(data);
+        setTasks(Array.isArray(data) ? data : []);
         setProgress(progressData);
         setNotificationSettings(notifData);
       });
