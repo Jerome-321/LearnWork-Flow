@@ -25,6 +25,10 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = [
     "learnwork-flow.onrender.com",
     "learnwork-flow-1.onrender.com",
+    "localhost",
+    "127.0.0.1",
+    "localhost:8000",
+    "127.0.0.1:8000",
 ]
 
 # Application definition
