@@ -46,7 +46,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         create_notification(
             user=self.request.user,
             notification_type="task_reminder",
-            title=f"New Task Created 📝",
+            title=f"New Task Created ",
             message=f"'{task.title}' has been added to your tasks.",
             task=task
         )
@@ -92,7 +92,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             create_notification(
                 user=self.request.user,
                 notification_type="task_completed",
-                title="Task Completed! 🎉",
+                title="Task Completed! ",
                 message=f"You earned {task.points} points for completing '{task.title}'",
                 task=task
             )
@@ -103,7 +103,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                 create_notification(
                     user=self.request.user,
                     notification_type="pet_update",
-                    title="Your Pet Leveled Up! 🐣➡️🐣",
+                    title="Your Pet Leveled Up!",
                     message=f"Your pet has reached level {progress.petLevel}! ({progress.petStage.upper()})",
                     task=None
                 )
@@ -444,10 +444,8 @@ def get_notification_settings(request):
 def get_vapid_public_key(request):
     """Return the public VAPID key for push subscription."""
     public_key = getattr(settings, "VAPID_PUBLIC_KEY", "")
-    print(f"[VAPID] Sending public key to {request.user.username}: {public_key[:50]}...")
-    return Response({
-        "public_key": public_key
-    })
+    print(f"[VAPID] Sending public key: {public_key[:50] if public_key else 'None'}...")
+    return Response({"public_key": public_key})
 
 
 # ✅ NEW: Subscribe for push notifications
@@ -596,7 +594,7 @@ def check_and_notify_deadline_tasks(user):
             notification = create_notification(
                 user=user,
                 notification_type="task_reminder",
-                title=f"Task Due Soon ⏰",
+                title=f"Task Due Soon ",
                 message=f"'{task.title}' is due {time_str}.",
                 task=task
             )
