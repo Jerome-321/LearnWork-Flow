@@ -165,7 +165,10 @@ def register(request):
         # ❌ TEMP DISABLE EMAIL
         # send_otp_email(email, otp)
 
-        return Response({"message": "OK DEBUG"})
+        return Response({
+            "message": "Account created successfully. Please verify your email.",
+            "otp": otp  # 🔧 DEBUG: Return OTP for testing
+        })
 
     except Exception as e:
         print("ERROR:", str(e))  # 🔥 THIS WILL SHOW IN RENDER LOGS

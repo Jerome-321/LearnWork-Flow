@@ -6,7 +6,8 @@ interface AuthContextType {
   session: any | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name?: string) => Promise<void>;
+  signUp: (email: string, password: string, name?: string) => Promise<{ otp?: string }>;
+  verifyOTP: (email: string, otp: string) => Promise<void>;
   signOut: () => Promise<void>;
   getAccessToken: () => string | null;
   refreshSession: () => Promise<void>;
@@ -64,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, name?: string) => {
+  const signUp = async (email: string, password: string, name?: string): Promise<{ otp?: string }> => {
     setGlobalLoading(true);
     try {
       const response = await fetch(`${API_URL}/register/`, {
@@ -85,7 +86,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(data.error || "Registration failed");
       }
 
-      await signIn(email, password);
+      // Return the OTP for development/testing
+      return { otp: data.otp };
+    } finally {
+      setGlobalLoading(false);
+    }
+  };
+
+  const verifyOTP = async (email: string, otp: string) => {
+    setGlobalLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/verify-otp/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          otp: otp,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "OTP verification failed");
+      }
+
+      // OTP verified successfully - user can now sign in
     } finally {
       setGlobalLoading(false);
     }
@@ -117,6 +145,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loading,
     signIn,
     signUp,
+    verifyOTP,
     signOut,
     getAccessToken,
     refreshSession,
