@@ -185,8 +185,10 @@ CORS_EXPOSE_HEADERS = [
 ]
 
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
+EMAIL_PORT = 465
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+EMAIL_TIMEOUT = 10
 # VAPID key used for Web Push (must match the key used by your push service)
 # NOTE: In a production system, store these securely (environment vars, secret manager)
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
