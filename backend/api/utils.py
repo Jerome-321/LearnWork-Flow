@@ -11,6 +11,39 @@ def generate_otp():
 
 
 def send_otp_email(email, otp):
+    import threading
+    threading.Thread(target=_send_otp_email, args=(email, otp), daemon=True).start()
+
+def _send_otp_email(email, otp):
+    import os, requests
+    api_key = os.environ.get('SENDGRID_API_KEY')
+    if api_key:
+        html_content = f"""
+    <div style="font-family: Arial, sans-serif; background:#f6f8fa; padding:40px;">
+        <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;text-align:center;">
+            <img src="https://raw.githubusercontent.com/Jerome-321/LearnWork-Flow/main/logo.png" width="80" style="margin-bottom:20px;" />
+            <h2>LearnWork-Flow</h2>
+            <p>Please verify your identity</p>
+            <div style="font-size:32px;letter-spacing:6px;margin:20px 0;font-weight:bold;">{otp}</div>
+            <p>This code is valid for 5 minutes.</p>
+            <p>Please don't share this code with anyone.</p>
+            <p>Thanks,<br>The LearnWork-Flow Team</p>
+        </div>
+    </div>
+    """
+        requests.post(
+            'https://api.sendgrid.com/v3/mail/send',
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+            json={
+                'personalizations': [{'to': [{'email': email}]}],
+                'from': {'email': os.environ.get('SENDGRID_FROM_EMAIL', 'noreply@learnwork-flow.com'), 'name': 'LearnWork-Flow'},
+                'subject': 'Verify your identity',
+                'content': [{'type': 'text/html', 'value': html_content}]
+            },
+            timeout=10
+        )
+        return
+    # fallback to SMTP if no SendGrid key
     subject = "Verify your identity"
 
     html_content = f"""
@@ -48,6 +81,10 @@ def send_otp_email(email, otp):
 from django.core.mail import EmailMultiAlternatives
 
 def send_task_email(user_email, task_title, time_left, task_id=None):
+    import threading
+    threading.Thread(target=_send_task_email, args=(user_email, task_title, time_left, task_id), daemon=True).start()
+
+def _send_task_email(user_email, task_title, time_left, task_id=None):
 
     # 🔗 your frontend URL (CHANGE THIS)
     BASE_URL = "https://learnwork-flow-1.onrender.com/dashboard"
