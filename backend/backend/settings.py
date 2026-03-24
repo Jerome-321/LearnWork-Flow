@@ -122,7 +122,7 @@ STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS settings moved to bottom of file
 from datetime import timedelta
 
 REST_FRAMEWORK = {
@@ -146,6 +146,25 @@ CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
     "https://learnwork-flow-1.onrender.com",
+    "https://learnwork-flow.onrender.com",
+    "http://localhost:5173",  # For local development
+    "http://localhost:3000",  # Alternative local port
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "content-type",
+    "authorization",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
