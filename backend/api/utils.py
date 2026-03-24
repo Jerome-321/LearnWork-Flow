@@ -109,7 +109,7 @@ def _send_task_email(user_email, task_title, time_left, task_id=None):
     task_url = f"{BASE_URL}/tasks/{task_id}" if task_id else BASE_URL
 
     content = f"""
-        <h2 style="margin:0 0 8px;font-size:22px;color:#09090b;">Task Due Soon ⏰</h2>
+        <h2 style="margin:0 0 8px;font-size:22px;color:#09090b;">Task Due Soon </h2>
         <p style="margin:0 0 16px;color:#52525b;font-size:15px;">You’re one step away from completing a goal.</p>
         <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">Keep momentum by checking this task and marking it done.</p>
 
@@ -136,6 +136,6 @@ def _send_notification_email(user_email, title, message):
         <p style="margin:0 0 24px;color:#71717a;font-size:15px;">{message}</p>
 
         <a href="https://learnwork-flow-1.onrender.com" style="display:block;text-align:center;background:#09090b;color:white;text-decoration:none;padding:12px;border-radius:8px;font-weight:bold;font-size:15px;">Open LearnWork-Flow</a>
-        <p style="margin:16px 0 0;color:#71717a;font-size:13px;text-align:center;">Stay productive 🚀</p>
+        <p style="margin:16px 0 0;color:#71717a;font-size:13px;text-align:center;">Stay productive </p>
     """
     _send_email_via_resend(user_email, title, _base_email(content))
