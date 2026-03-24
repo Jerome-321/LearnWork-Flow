@@ -15,6 +15,9 @@ interface AuthContextType {
 
 const API_URL = import.meta.env.VITE_API_URL || "https://learnwork-flow.onrender.com/api";
 
+// Debug: Log the API URL being used
+console.log("AuthContext API_URL:", API_URL);
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {

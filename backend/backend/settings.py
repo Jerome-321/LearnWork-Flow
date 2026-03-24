@@ -139,10 +139,12 @@ SIMPLE_JWT = {
 
 
 # ========================
-# ✅ CORS (FINAL FIX)
+# ✅ CORS CONFIGURATION
 # ========================
 
-CORS_ALLOW_ALL_ORIGINS = True  # Temporarily allow all for testing
+# Allow all origins temporarily for testing
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
     "https://learnwork-flow-1.onrender.com",
@@ -151,8 +153,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
 ]
 
-CORS_ALLOW_CREDENTIALS = True
-
 CORS_ALLOW_METHODS = [
     "DELETE",
     "GET",
@@ -160,26 +160,27 @@ CORS_ALLOW_METHODS = [
     "PATCH",
     "POST",
     "PUT",
+    "HEAD",
 ]
 
-CORS_ALLOW_HEADERS = list(default_headers) + [
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
     "content-type",
-    "authorization",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
 
-# 🔥 IMPORTANT: allow default headers
-CORS_ALLOW_HEADERS = list(default_headers) + [
-    "authorization",
+# Explicitly allow credentials
+CORS_EXPOSE_HEADERS = [
+    "Content-Type",
+    "Authorization",
 ]
 
-CORS_ALLOW_METHODS = [
-    "GET",
-    "POST",
-    "PUT",
-    "PATCH",
-    "DELETE",
-    "OPTIONS",
-]
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
