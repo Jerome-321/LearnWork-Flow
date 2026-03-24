@@ -162,12 +162,12 @@ def register(request):
             defaults={"otp": otp, "is_verified": False}
         )
 
-        # ❌ TEMP DISABLE EMAIL
-        # send_otp_email(email, otp)
+        # Send OTP email
+        send_otp_email(email, otp)
 
         return Response({
             "message": "Account created successfully. Please verify your email.",
-            "otp": otp  # 🔧 DEBUG: Return OTP for testing
+            "otp": otp  # 🔧 DEBUG: Return OTP for testing (remove in production)
         })
 
     except Exception as e:
