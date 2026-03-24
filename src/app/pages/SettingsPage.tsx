@@ -226,43 +226,6 @@ export function SettingsPage() {
                   <p className="text-sm text-muted-foreground">
                     Turn off to disable all notifications
                   </p>
-                  {permission === 'default' && isSupported && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={async () => {
-                        try {
-                          const result = await requestNotificationPermission();
-                          if (result === 'granted') {
-                            toast.success('Notification permission granted');
-                          } else {
-                            toast.error('Notification permission not granted');
-                          }
-                        } catch (err) {
-                          toast.error('Failed to request notification permission');
-                        }
-                      }}
-                      disabled={isLoading}
-                    >
-                      Request permission
-                    </Button>
-                  )}
-                  {isSupported && permission === 'granted' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={async () => {
-                        try {
-                          await sendTestNotification();
-                        } catch {
-                          // errors are handled inside sendTestNotification
-                        }
-                      }}
-                      disabled={isLoading}
-                    >
-                      Send test notification
-                    </Button>
-                  )}
                 </div>
                 <Switch
                   checked={localNotifSettings?.notifications_enabled ?? true}
@@ -367,47 +330,20 @@ export function SettingsPage() {
                     <div className="space-y-0.5">
                       <Label>Push Notifications</Label>
                       <p className="text-sm text-muted-foreground">
-                        {!subscriptionChecked ? 'Checking notification status...' : 'Get notified 1 day and 5 hours before due tasks'}
+                        Get notified before due tasks
                       </p>
                       {!isSupported && (
                         <p className="text-sm text-red-500">
                           Push notifications not supported in this browser
                         </p>
                       )}
-                      {permission === 'default' && (
-                        <div className="flex flex-col gap-2">
-                          <p className="text-sm text-muted-foreground">
-                            Notifications are not granted yet. You need to grant permission to receive reminders.
-                          </p>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={async () => {
-                              try {
-                                const result = await requestNotificationPermission();
-                                if (result === 'granted') {
-                                  toast.success('Notification permission granted');
-                                } else {
-                                  toast.error('Notification permission denied');
-                                }
-                              } catch (err) {
-                                toast.error('Failed to request notification permission');
-                              }
-                            }}
-                            disabled={isLoading || !isSupported}
-                          >
-                            Request permission
-                          </Button>
-                        </div>
-                      )}
-                      {permission === 'denied' && (
+                      {isSupported && permission === 'denied' && (
                         <p className="text-sm text-red-500">
                           Permission denied. Enable notifications in browser settings.
                         </p>
                       )}
-
-                      {permission === 'granted' && isSupported && (
-                        <div className="flex flex-wrap gap-2">
+                      {isSupported && permission !== 'denied' && (
+                        <div className="flex flex-wrap gap-2 mt-2">
                           <Button
                             size="sm"
                             variant={isSubscribed ? 'destructive' : 'secondary'}
@@ -415,10 +351,10 @@ export function SettingsPage() {
                               try {
                                 if (isSubscribed) {
                                   await unsubscribe();
-                                  toast.success('Task reminders disabled');
+                                  toast.success('Push notifications disabled');
                                 } else {
                                   await subscribe();
-                                  toast.success('Task reminders enabled');
+                                  toast.success('Push notifications enabled');
                                 }
                               } catch (error) {
                                 if (error instanceof Error && error.message === 'Permission denied') {
@@ -428,25 +364,26 @@ export function SettingsPage() {
                                 }
                               }
                             }}
-                            disabled={isLoading || !subscriptionChecked}
+                            disabled={isLoading}
                           >
-                            {isSubscribed ? 'Disable push notifications' : 'Enable push notifications'}
+                            {isLoading ? 'Loading...' : isSubscribed ? 'Disable push notifications' : 'Enable push notifications'}
                           </Button>
-
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={async () => {
-                              try {
-                                await sendTestNotification();
-                              } catch {
-                                // errors handled inside sendTestNotification
-                              }
-                            }}
-                            disabled={isLoading || !isSubscribed}
-                          >
-                            Send test notification
-                          </Button>
+                          {isSubscribed && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                try {
+                                  await sendTestNotification();
+                                } catch {
+                                  // errors handled inside sendTestNotification
+                                }
+                              }}
+                              disabled={isLoading}
+                            >
+                              Send test notification
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -456,10 +393,10 @@ export function SettingsPage() {
                         try {
                           if (checked) {
                             await subscribe();
-                            toast.success("Task reminders enabled");
+                            toast.success("Push notifications enabled");
                           } else {
                             await unsubscribe();
-                            toast.success("Task reminders disabled");
+                            toast.success("Push notifications disabled");
                           }
                         } catch (error) {
                           if (error instanceof Error && error.message === 'Permission denied') {
@@ -469,7 +406,7 @@ export function SettingsPage() {
                           }
                         }
                       }}
-                      disabled={isLoading || !isSupported || permission === 'denied' || !subscriptionChecked}
+                      disabled={isLoading || !isSupported || permission === 'denied'}
                     />
                   </div>
                 </>
