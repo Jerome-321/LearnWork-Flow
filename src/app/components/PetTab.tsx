@@ -24,7 +24,6 @@ export function PetTab() {
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
-    setGlobalLoading(true);
     try {
       const token = getAccessToken();
       const response = await fetch(`${API_URL}/leaderboard/`, {
@@ -68,7 +67,7 @@ export function PetTab() {
   );
 
   const topThree = leaderboard.slice(0, 3);
-  const restUsers = filteredLeaderboard.slice(3);
+  const restUsers = filteredLeaderboard;
 
   if (loading) {
     return (
@@ -189,7 +188,7 @@ export function PetTab() {
             <div className="space-y-2">
               <div className="hidden md:block space-y-1">
                 {restUsers.map((user, origIndex) => {
-                  const index = origIndex + 3;
+                  const index = origIndex;
                   return (
                     <div
                       key={user.id}
@@ -199,6 +198,7 @@ export function PetTab() {
                         <span className="text-lg font-semibold text-gray-600 dark:text-gray-400">
                           {index + 1}
                         </span>
+                        {index < 3 && <span>{["🥇","🥈","🥉"][index]}</span>}
                       </div>
 
                       <div className="flex items-center gap-3 flex-1">
@@ -246,14 +246,14 @@ export function PetTab() {
 
               <div className="md:hidden space-y-3">
                 {restUsers.map((user, origIndex) => {
-                  const index = origIndex + 3;
+                  const index = origIndex;
                   return (
                     <Card key={user.id} className="border-gray-200 dark:border-gray-700">
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-start gap-3">
                           <div className="flex flex-col items-center gap-2">
                             <span className="text-lg font-bold text-gray-600 dark:text-gray-400">
-                              {index + 1}
+                              {index + 1} {index < 3 && ["🥇","🥈","🥉"][index]}
                             </span>
                             <Avatar className="h-12 w-12 bg-gray-200 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
                               <AvatarFallback className="text-gray-900 dark:text-white font-bold text-xs">
