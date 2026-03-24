@@ -13,21 +13,26 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import timedelta
+
 load_dotenv()
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# ========================
 # SECURITY
+# ========================
 SECRET_KEY = os.environ.get('SECRET_KEY')
-
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
-    "learnwork-flow.onrender.com",
-    "learnwork-flow-1.onrender.com",
+    "learnwork-flow.onrender.com",      # backend
+    "learnwork-flow-1.onrender.com",    # frontend
 ]
 
-# Application definition
-
+# ========================
+# APPS
+# ========================
 INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
@@ -40,8 +45,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 ]
 
+# ========================
+# MIDDLEWARE (CORS FIRST!)
+# ========================
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # 🔥 MUST BE FIRST
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -53,27 +61,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'backend.urls'
 
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-            ],
-        },
-    },
-]
-
-WSGI_APPLICATION = 'backend.wsgi.application'
-
-
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
+# ========================
+# DATABASE
+# ========================
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -81,50 +71,58 @@ DATABASES = {
     }
 }
 
-
-# Password validation
-# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
-
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
-
-
-# Internationalization
-# https://docs.djangoproject.com/en/6.0/topics/i18n/
-
+# ========================
+# INTERNATIONAL
+# ========================
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'Asia/Manila'
-
 USE_I18N = True
-
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
-
+# ========================
+# STATIC & MEDIA
+# ========================
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Media files (uploaded images)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-CORS_ALLOW_ALL_ORIGINS = True
-from datetime import timedelta
+# ========================
+# ✅ CORS (FINAL FIX)
+# ========================
+CORS_ALLOW_ALL_ORIGINS = False
 
+CORS_ALLOWED_ORIGINS = [
+    "https://learnwork-flow-1.onrender.com",  # 🔥 YOUR FRONTEND
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = [
+    "authorization",
+    "content-type",
+]
+
+CORS_ALLOW_METHODS = [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+]
+
+# ========================
+# ✅ CSRF (RENDER FIX)
+# ========================
+CSRF_TRUSTED_ORIGINS = [
+    "https://learnwork-flow-1.onrender.com",
+]
+
+# ========================
+# REST FRAMEWORK
+# ========================
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -136,27 +134,26 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-CORS_ALLOW_ALL_ORIGINS = False
-
-CORS_ALLOWED_ORIGINS = [
-    "https://learnwork-flow.onrender.com",
-]
-
-CORS_ALLOW_CREDENTIALS = True
-
-CSRF_TRUSTED_ORIGINS = [
-    "https://learnwork-flow.onrender.com",
-]
-
+# ========================
+# EMAIL
+# ========================
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-# VAPID key used for Web Push (must match the key used by your push service)
-# NOTE: In a production system, store these securely (environment vars, secret manager)
+
+EMAIL_HOST_USER = os.getenv("EMAIL_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_PASS")
+
+DEFAULT_FROM_EMAIL = "LearnWork-Flow <jerome.natividad7704@gmail.com>"
+
+# ========================
+# PUSH NOTIFICATION KEYS
+# ========================
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
 VAPID_EMAIL = os.environ.get("VAPID_ADMIN_EMAIL")
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-EMAIL_HOST_USER = os.getenv("EMAIL_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_PASS")
-DEFAULT_FROM_EMAIL = "LearnWork-Flow <jerome.natividad7704@gmail.com>"
+
+# ========================
+# OPTIONAL FIXES
+# ========================
+APPEND_SLASH = True
