@@ -15,6 +15,11 @@ def send_otp_email(email, otp):
     threading.Thread(target=_send_otp_email, args=(email, otp), daemon=True).start()
 
 def _send_otp_email(email, otp):
+    import os, requests
+    api_key = os.environ.get('RESEND_API_KEY')
+    if not api_key:
+        print('❌ RESEND_API_KEY not set')
+        return
     html_content = f"""
     <div style="font-family: Arial, sans-serif; background:#f6f8fa; padding:40px;">
         <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;text-align:center;">
@@ -28,18 +33,18 @@ def _send_otp_email(email, otp):
         </div>
     </div>
     """
-    try:
-        email_msg = EmailMultiAlternatives(
-            "Verify your identity",
-            f"Your OTP is {otp}",
-            None,
-            [email],
-        )
-        email_msg.attach_alternative(html_content, "text/html")
-        email_msg.send()
-        print(f"✅ OTP email sent to {email}")
-    except Exception as e:
-        print(f"❌ OTP email failed: {str(e)}")
+    response = requests.post(
+        'https://api.resend.com/emails',
+        headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+        json={
+            'from': 'LearnWork-Flow <onboarding@resend.dev>',
+            'to': [email],
+            'subject': 'Verify your identity',
+            'html': html_content
+        },
+        timeout=10
+    )
+    print(f'[RESEND] Status: {response.status_code}, Body: {response.text}')
 
 from django.core.mail import EmailMultiAlternatives
 
