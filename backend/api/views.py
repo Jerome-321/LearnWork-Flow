@@ -722,7 +722,7 @@ def send_test_notification(request):
             "success": False, 
             "message": "Failed to send test notification.", 
             "errors": errors
-        }, status=500)
+        }, status=200)
     except Exception as e:
         print(f"[TEST] ERROR: {str(e)}")
         import traceback
