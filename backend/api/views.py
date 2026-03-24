@@ -537,6 +537,12 @@ def create_notification(user, notification_type, title, message, task=None):
         message=message,
         task=task
     )
+
+    # Send email notification
+    if user.email:
+        from .utils import send_notification_email
+        send_notification_email(user.email, title, message)
+
     return notification
 
 
