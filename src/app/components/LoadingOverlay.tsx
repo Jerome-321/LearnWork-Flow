@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLoading } from "../contexts/LoadingContext";
 import { Loader2 } from "lucide-react"; // ✅ shadcn uses lucide icons
 import { Card, CardContent } from "./ui/card"; // ✅ shadcn Card component
 
 export default function LoadingOverlay() {
   const { loading, setLoading } = useLoading();
+  const [isFading, setIsFading] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("global-loading");
@@ -13,23 +14,36 @@ export default function LoadingOverlay() {
       const { startTime } = JSON.parse(stored);
 
       const MIN_DURATION = 800; // 🔥 adjust delay
+      const FADE_OUT_DELAY = 300; // ✨ delay before fade starts
+      const FADE_OUT_DURATION = 400; // ✨ fade animation duration
 
       const elapsed = Date.now() - startTime;
       const remaining = Math.max(0, MIN_DURATION - elapsed);
 
       setLoading(true);
+      setIsFading(false);
 
+      // Start fade-out after delay
       setTimeout(() => {
-        localStorage.removeItem("global-loading");
-        setLoading(false);
-      }, remaining);
+        setIsFading(true);
+        
+        // Remove loading after fade completes
+        setTimeout(() => {
+          localStorage.removeItem("global-loading");
+          setLoading(false);
+        }, FADE_OUT_DURATION);
+      }, remaining + FADE_OUT_DELAY);
     }
   }, [setLoading]);
 
   if (!loading) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/70 backdrop-blur-sm">
+    <div 
+      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-background/70 backdrop-blur-sm transition-opacity duration-400 ${
+        isFading ? "opacity-0" : "opacity-100"
+      }`}
+    >
       
       {/* ✅ shadcn Card */}
       <Card className="shadow-xl border-muted">
