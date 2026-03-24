@@ -17,14 +17,15 @@ def _base_email(content_html):
 
             <!-- Header -->
             <tr>
-              <td style="background:#000000;padding:28px 32px;">
+              <td style="background:#000000;padding:24px 32px;">
                 <table cellpadding="0" cellspacing="0">
                   <tr>
-                    <td style="background:white;border-radius:8px;width:40px;height:40px;text-align:center;vertical-align:middle;">
-                      <span style="font-size:20px;line-height:40px;">✓</span>
+                    <td style="vertical-align:middle;">
+                      <img src="https://learnwork-flow-1.onrender.com/media/logo.png" alt="LearnWork-Flow" style="width:48px;height:48px;border-radius:8px;object-fit:cover;" />
                     </td>
-                    <td style="padding-left:12px;">
-                      <span style="color:white;font-size:22px;font-weight:bold;letter-spacing:-0.5px;">LearnWork-Flow</span>
+                    <td style="padding-left:12px;vertical-align:middle;">
+                      <div style="color:white;font-size:20px;font-weight:bold;letter-spacing:-0.5px;line-height:1.1;">LearnWork-Flow</div>
+                      <div style="color:#d4d4d8;font-size:12px;letter-spacing:0.5px;">Productivity for working students</div>
                     </td>
                   </tr>
                 </table>
@@ -81,15 +82,17 @@ def send_otp_email(email, otp):
 
 def _send_otp_email(email, otp):
     content = f"""
-        <h2 style="margin:0 0 8px;font-size:22px;color:#09090b;">Verify your email</h2>
-        <p style="margin:0 0 24px;color:#71717a;font-size:15px;">Enter this code to complete your registration.</p>
+        <h2 style="margin:0 0 8px;font-size:22px;color:#09090b;">Verify your LearnWork-Flow account</h2>
+        <p style="margin:0 0 16px;color:#52525b;font-size:15px;">Welcome! We received a request to sign in with your email address.</p>
+        <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">Use the one-time code below to verify your account. If this wasn't you, please ignore this email.</p>
 
-        <div style="background:#f4f4f5;border-radius:8px;padding:24px;text-align:center;margin-bottom:24px;">
-          <span style="font-size:36px;font-weight:bold;letter-spacing:10px;color:#09090b;">{otp}</span>
+        <div style="background:#f4f4f5;border-radius:10px;padding:24px;text-align:center;margin-bottom:20px;">
+          <span style="font-size:40px;font-weight:900;letter-spacing:12px;color:#111827;">{otp}</span>
         </div>
 
-        <p style="margin:0 0 8px;color:#71717a;font-size:13px;text-align:center;">This code expires in <strong>5 minutes</strong>.</p>
-        <p style="margin:0;color:#71717a;font-size:13px;text-align:center;">If you didn't request this, you can safely ignore this email.</p>
+        <p style="margin:0 0 8px;color:#71717a;font-size:13px;text-align:center;"><strong>Valid for 5 minutes</strong>. Don't share this code with anyone.</p>
+        <p style="margin:0 0 16px;color:#71717a;font-size:13px;text-align:center;">Need help? Reply to this email and we'll assist you quickly.</p>
+        <p style="margin:0;color:#a1a1aa;font-size:12px;text-align:center;">LearnWork-Flow helps you hit milestones with organized tasks and reminders.</p>
     """
     _send_email_via_resend(email, 'Verify your LearnWork-Flow account', _base_email(content))
 
@@ -106,10 +109,11 @@ def _send_task_email(user_email, task_title, time_left, task_id=None):
 
     content = f"""
         <h2 style="margin:0 0 8px;font-size:22px;color:#09090b;">Task Due Soon ⏰</h2>
-        <p style="margin:0 0 24px;color:#71717a;font-size:15px;">You have a task coming up.</p>
+        <p style="margin:0 0 16px;color:#52525b;font-size:15px;">You’re one step away from completing a goal.</p>
+        <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">Keep momentum by checking this task and marking it done.</p>
 
-        <div style="background:#f4f4f5;border-radius:8px;padding:20px;margin-bottom:24px;">
-          <p style="margin:0 0 6px;font-size:16px;font-weight:bold;color:#09090b;">{task_title}</p>
+        <div style="background:#f4f4f5;border-radius:10px;padding:20px;margin-bottom:24px;">
+          <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#111827;">{task_title}</p>
           <p style="margin:0;font-size:14px;color:#ef4444;">Due in {time_left}</p>
         </div>
 
