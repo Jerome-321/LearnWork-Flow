@@ -31,7 +31,7 @@ def _send_otp_email(email, otp):
         </div>
     </div>
     """
-        requests.post(
+        response = requests.post(
             'https://api.sendgrid.com/v3/mail/send',
             headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
             json={
@@ -42,6 +42,7 @@ def _send_otp_email(email, otp):
             },
             timeout=10
         )
+        print(f"[SENDGRID] Status: {response.status_code}, Body: {response.text}")
         return
     # fallback to SMTP if no SendGrid key
     subject = "Verify your identity"
