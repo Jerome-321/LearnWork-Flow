@@ -71,6 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (email: string, password: string, name?: string): Promise<{ otp?: string }> => {
     setGlobalLoading(true);
     try {
+      console.log("🔄 Attempting to register:", email);
       const response = await fetch(`${API_URL}/register/`, {
         method: "POST",
         headers: {
@@ -83,7 +84,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }),
       });
 
+      console.log("📡 Response status:", response.status);
+      console.log("📡 Response headers:", Object.fromEntries(response.headers));
+
       const data = await response.json();
+      console.log("📦 Response body:", data);
 
       if (!response.ok) {
         throw new Error(data.error || "Registration failed");

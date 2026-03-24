@@ -139,13 +139,40 @@ class TaskViewSet(viewsets.ModelViewSet):
 
 from api.utils import generate_otp, send_otp_email
 from .models import EmailOTP
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import AllowAny
 
-@api_view(['POST'])
+@api_view(['POST', 'OPTIONS'])
+@permission_classes([AllowAny])
 def register(request):
+    # Handle preflight requests
+    if request.method == 'OPTIONS':
+        return Response(status=200)
+    
     try:
         username = request.data.get("username")
         email = request.data.get("email")
         password = request.data.get("password")
+
+        # Validation
+        if not all([username, email, password]):
+            return Response(
+                {"error": "username, email, and password are required"},
+                status=400
+            )
+
+        # Check if user already exists
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {"error": "Username already exists"},
+                status=400
+            )
+
+        if User.objects.filter(email=email).exists():
+            return Response(
+                {"error": "Email already registered"},
+                status=400
+            )
 
         user = User.objects.create_user(
             username=username,
@@ -162,21 +189,35 @@ def register(request):
             defaults={"otp": otp, "is_verified": False}
         )
 
-        # Send OTP email
-        send_otp_email(email, otp)
+        # Send OTP email - don't fail if email fails
+        try:
+            send_otp_email(email, otp)
+        except Exception as email_error:
+            print("⚠️ Email sending failed:", str(email_error))
+            # Don't return error - just log it
 
         return Response({
             "message": "Account created successfully. Please verify your email.",
-            "otp": otp  # 🔧 DEBUG: Return OTP for testing (remove in production)
-        })
+            "otp": otp  # 🔧 DEBUG: Return OTP for testing
+        }, status=201)
 
     except Exception as e:
-        print("ERROR:", str(e))  # 🔥 THIS WILL SHOW IN RENDER LOGS
-        return Response({"error": str(e)}, status=500)
+        import traceback
+        print("❌ REGISTER ERROR:", str(e))
+        print(traceback.format_exc())
+        return Response(
+            {"error": str(e)},
+            status=500
+        )
     
 
-@api_view(['POST'])
+@api_view(['POST', 'OPTIONS'])
+@permission_classes([AllowAny])
 def verify_otp(request):
+    # Handle preflight requests
+    if request.method == 'OPTIONS':
+        return Response(status=200)
+    
     email = request.data.get("email")
     otp_input = request.data.get("otp")
 
@@ -187,17 +228,26 @@ def verify_otp(request):
         if otp_obj.otp == otp_input:
             otp_obj.is_verified = True
             otp_obj.save()
-            return Response({"message": "Verified successfully"})
+            return Response({"message": "Verified successfully"}, status=200)
 
         return Response({"error": "Invalid OTP"}, status=400)
 
-    except:
+    except User.DoesNotExist:
         return Response({"error": "User not found"}, status=404)
+    except EmailOTP.DoesNotExist:
+        return Response({"error": "OTP not found"}, status=404)
+    except Exception as e:
+        print("❌ VERIFY OTP ERROR:", str(e))
+        return Response({"error": str(e)}, status=500)
 
 # LOGIN
 
-@api_view(['POST'])
+@api_view(['POST', 'OPTIONS'])
+@permission_classes([AllowAny])
 def login(request):
+    # Handle preflight requests
+    if request.method == 'OPTIONS':
+        return Response(status=200)
 
     email = request.data.get("username")
     password = request.data.get("password")
