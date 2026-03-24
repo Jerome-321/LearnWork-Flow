@@ -15,10 +15,7 @@ def send_otp_email(email, otp):
     threading.Thread(target=_send_otp_email, args=(email, otp), daemon=True).start()
 
 def _send_otp_email(email, otp):
-    import os, requests
-    api_key = os.environ.get('SENDGRID_API_KEY')
-    if api_key:
-        html_content = f"""
+    html_content = f"""
     <div style="font-family: Arial, sans-serif; background:#f6f8fa; padding:40px;">
         <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;text-align:center;">
             <img src="https://raw.githubusercontent.com/Jerome-321/LearnWork-Flow/main/logo.png" width="80" style="margin-bottom:20px;" />
@@ -31,53 +28,18 @@ def _send_otp_email(email, otp):
         </div>
     </div>
     """
-        response = requests.post(
-            'https://api.sendgrid.com/v3/mail/send',
-            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
-            json={
-                'personalizations': [{'to': [{'email': email}]}],
-                'from': {'email': os.environ.get('SENDGRID_FROM_EMAIL', 'noreply@learnwork-flow.com'), 'name': 'LearnWork-Flow'},
-                'subject': 'Verify your identity',
-                'content': [{'type': 'text/html', 'value': html_content}]
-            },
-            timeout=10
+    try:
+        email_msg = EmailMultiAlternatives(
+            "Verify your identity",
+            f"Your OTP is {otp}",
+            None,
+            [email],
         )
-        print(f"[SENDGRID] Status: {response.status_code}, Body: {response.text}")
-        return
-    # fallback to SMTP if no SendGrid key
-    subject = "Verify your identity"
-
-    html_content = f"""
-    <div style="font-family: Arial, sans-serif; background:#f6f8fa; padding:40px;">
-        <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;text-align:center;">
-            
-            <img src="https://raw.githubusercontent.com/Jerome-321/LearnWork-Flow/main/logo.png" width="80" style="margin-bottom:20px;" />
-
-            <h2>LearnWork-Flow</h2>
-            <p>Please verify your identity</p>
-
-            <div style="font-size:32px;letter-spacing:6px;margin:20px 0;font-weight:bold;">
-                {otp}
-            </div>
-
-            <p>This code is valid for 5 minutes.</p>
-
-            <p>Please don't share this code with anyone: we'll never ask for it on the phone or via email.</p>
-            <p>Thanks,
-            <br>The LearnWork-Flow Team</p>
-        </div>
-    </div>
-    """
-
-    email_msg = EmailMultiAlternatives(
-        subject,
-        f"Your OTP is {otp}",
-        None,
-        [email],
-    )
-
-    email_msg.attach_alternative(html_content, "text/html")
-    email_msg.send()
+        email_msg.attach_alternative(html_content, "text/html")
+        email_msg.send()
+        print(f"✅ OTP email sent to {email}")
+    except Exception as e:
+        print(f"❌ OTP email failed: {str(e)}")
 
 from django.core.mail import EmailMultiAlternatives
 
