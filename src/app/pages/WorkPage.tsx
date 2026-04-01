@@ -1,7 +1,7 @@
 import { useOutletContext } from "react-router";
 import { TaskList } from "../components/TaskList";
 import { TaskActions } from "../components/TaskActions";
-import { useTaskAPI } from "../hooks/useTaskAPI";
+import { Task } from "../types/task";
 import { Briefcase } from "lucide-react";
 
 interface OutletContext {
@@ -9,11 +9,11 @@ interface OutletContext {
   setSelectedTaskId: (id: string | null) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  tasks: Task[];
 }
 
 export function WorkPage() {
-  const { selectedTaskId, setSelectedTaskId, searchQuery } = useOutletContext<OutletContext>();
-  const { tasks } = useTaskAPI();
+  const { selectedTaskId, setSelectedTaskId, searchQuery, tasks } = useOutletContext<OutletContext>();
 
   const workTasks = tasks.filter((t) => t.category === "work");
   

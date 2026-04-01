@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
-import { useTaskAPI } from "../hooks/useTaskAPI";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from "lucide-react";
+import { Task } from "../types/task";
 import { Button } from "../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
@@ -11,13 +11,14 @@ import { TaskActions } from "../components/TaskActions";
 interface OutletContext {
   selectedTaskId: string | null;
   setSelectedTaskId: (id: string | null) => void;
+  tasks: Task[];
 }
 
 export function CalendarPage() {
-  const { tasks } = useTaskAPI();
-  const { setSelectedTaskId } = useOutletContext<OutletContext>();
+  const { tasks, setSelectedTaskId } = useOutletContext<OutletContext>();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"week" | "month">("week");
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -43,17 +44,23 @@ export function CalendarPage() {
     return days;
   };
 
+  const toLocalDateStr = (date: Date) =>
+    `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+
   const getTasksForDate = (date: Date) => {
-    const dateStr = date.toDateString();
-    return tasks.filter(
-      (task) => new Date(task.dueDate).toDateString() === dateStr
-    );
+    const dateStr = toLocalDateStr(date);
+    return tasks.filter((task) => {
+      if (!task.dueDate) return false;
+      const d = new Date(task.dueDate);
+      return toLocalDateStr(d) === dateStr;
+    });
   };
 
   const navigateMonth = (direction: number) => {
     const newDate = new Date(currentDate);
     newDate.setMonth(newDate.getMonth() + direction);
     setCurrentDate(newDate);
+    setSelectedDate(null);
   };
 
   const navigateWeek = (direction: number) => {
@@ -64,6 +71,7 @@ export function CalendarPage() {
 
   const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
   const weekDays = getWeekDays(currentDate);
+  const selectedDateTasks = selectedDate ? getTasksForDate(selectedDate) : [];
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -89,7 +97,7 @@ export function CalendarPage() {
 
       <div className="flex-1 overflow-auto p-4 lg:p-6">
         <div className="max-w-6xl mx-auto">
-          <Tabs value={view} onValueChange={(v) => setView(v as "week" | "month")}>
+          <Tabs value={view} onValueChange={(v) => { setView(v as "week" | "month"); setSelectedDate(null); }}>
             <div className="flex items-center justify-between mb-6">
               <TabsList className="bg-muted">
                 <TabsTrigger value="week" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
@@ -104,7 +112,7 @@ export function CalendarPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentDate(new Date())}
+                  onClick={() => { setCurrentDate(new Date()); setSelectedDate(null); }}
                 >
                   Today
                 </Button>
@@ -233,12 +241,16 @@ export function CalendarPage() {
                   );
                   const dayTasks = getTasksForDate(day);
                   const isToday = day.toDateString() === new Date().toDateString();
+                  const isSelected = selectedDate?.toDateString() === day.toDateString();
 
                   return (
                     <Card
                       key={index}
-                      className={`min-h-[120px] p-3 cursor-pointer transition-all hover:shadow-md ${
-                        isToday
+                      onClick={() => setSelectedDate(isSelected ? null : day)}
+                      className={`min-h-[100px] p-3 cursor-pointer transition-all hover:shadow-md ${
+                        isSelected
+                          ? "border-2 border-primary ring-2 ring-primary/20"
+                          : isToday
                           ? "border-2 border-primary bg-primary/5"
                           : dayTasks.length > 0
                           ? "bg-muted/50"
@@ -248,19 +260,17 @@ export function CalendarPage() {
                       <div className="flex items-center justify-between mb-2">
                         <div
                           className={`text-sm font-bold ${
-                            isToday
-                              ? "text-primary"
-                              : "text-foreground"
+                            isToday || isSelected ? "text-primary" : "text-foreground"
                           }`}
                         >
                           {index + 1}
                         </div>
-                        {isToday && (
+                        {isToday && !isSelected && (
                           <div className="h-2 w-2 rounded-full bg-primary" />
                         )}
                       </div>
                       {dayTasks.length > 0 && (
-                        <Badge 
+                        <Badge
                           variant="secondary"
                           className="text-xs font-semibold"
                         >
@@ -272,6 +282,50 @@ export function CalendarPage() {
                 })}
               </div>
             </div>
+
+            {/* Selected date task list */}
+            {selectedDate && (
+              <div className="mt-6 border rounded-lg bg-card p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-foreground">
+                    {selectedDate.toLocaleDateString("en-US", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </h3>
+                  <Button variant="ghost" size="icon" onClick={() => setSelectedDate(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                {selectedDateTasks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No tasks for this day.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedDateTasks.map((task) => (
+                      <button
+                        key={task.id}
+                        onClick={() => setSelectedTaskId(task.id)}
+                        className={`w-full rounded-md p-3 text-left text-sm transition-all hover:shadow-sm ${
+                          task.completed
+                            ? "bg-green-500/10 hover:bg-green-500/20 text-green-700 dark:text-green-300"
+                            : "bg-primary/10 hover:bg-primary/20 text-foreground"
+                        }`}
+                      >
+                        <div className={`font-medium ${task.completed ? "line-through" : ""}`}>
+                          {task.title}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
+                          <span>{new Date(task.dueDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</span>
+                          <Badge variant="outline" className="text-xs capitalize">{task.priority}</Badge>
+                          <Badge variant="outline" className="text-xs capitalize">{task.category}</Badge>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
           </Tabs>
         </div>

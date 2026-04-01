@@ -52,7 +52,7 @@ export function Layout() {
             }`}
           >
             <div className="w-full overflow-auto">
-              <Outlet context={{ selectedTaskId, setSelectedTaskId, searchQuery, setSearchQuery }} />
+              <Outlet context={{ selectedTaskId, setSelectedTaskId, searchQuery, setSearchQuery, tasks }} />
             </div>
 
             {selectedTask && (

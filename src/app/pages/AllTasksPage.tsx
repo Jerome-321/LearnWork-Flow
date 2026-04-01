@@ -1,19 +1,20 @@
 import { useOutletContext } from "react-router";
 import { TaskList } from "../components/TaskList";
 import { TaskActions } from "../components/TaskActions";
-import { useTaskAPI } from "../hooks/useTaskAPI";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+
+import { Task } from "../types/task";
 
 interface OutletContext {
   selectedTaskId: string | null;
   setSelectedTaskId: (id: string | null) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  tasks: Task[];
 }
 
 export function AllTasksPage() {
-  const { selectedTaskId, setSelectedTaskId, searchQuery } = useOutletContext<OutletContext>();
-  const { tasks } = useTaskAPI();
+  const { selectedTaskId, setSelectedTaskId, searchQuery, tasks } = useOutletContext<OutletContext>();
 
   const filteredTasks = tasks.filter((task) =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
