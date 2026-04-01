@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router";
 import { TopNav } from "./TopNav";
 import { Sidebar } from "./Sidebar";
@@ -7,11 +7,21 @@ import { VirtualPet } from "./VirtualPet";
 import { useTaskAPI } from "../hooks/useTaskAPI";
 
 export function Layout() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   const { tasks, loading } = useTaskAPI();
+
+  // Ensure desktop gets sidebar open automatically while mobile stays off by default
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
+      handleResize();
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
+  }, []);
   
   // Find the selected task
   const selectedTask = selectedTaskId ? tasks.find(t => t.id === selectedTaskId) : null;
@@ -29,32 +39,37 @@ export function Layout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar */}
+    <div className="min-h-screen flex flex-col overflow-hidden bg-background lg:flex-row">
       <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
 
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col min-h-screen overflow-hidden">
         <TopNav onMenuClick={() => setSidebarOpen(!sidebarOpen)} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 
-        <main className="flex flex-1 overflow-hidden relative">
-          {/* Task List Area */}
-          <div className={`flex-1 overflow-auto transition-all duration-300 ${selectedTask ? "lg:mr-[400px]" : ""}`}>
-            <Outlet context={{ selectedTaskId, setSelectedTaskId, searchQuery, setSearchQuery }} />
-          </div>
+        <main className="flex-1 overflow-auto p-3 sm:p-4">
+          <div
+            className={`flex flex-col w-full h-full gap-4 transition-all duration-300 ${
+              selectedTask ? "lg:grid lg:grid-cols-[1fr_minmax(320px,400px)]" : ""
+            }`}
+          >
+            <div className="w-full overflow-auto">
+              <Outlet context={{ selectedTaskId, setSelectedTaskId, searchQuery, setSearchQuery }} />
+            </div>
 
-          {/* Task Detail Panel */}
-          {selectedTask && (
-            <TaskActions
-              task={selectedTask}
-              onClose={() => setSelectedTaskId(null)}
-            />
-          )}
+            {selectedTask && (
+              <div className="w-full lg:w-auto">
+                <TaskActions
+                  task={selectedTask}
+                  onClose={() => setSelectedTaskId(null)}
+                />
+              </div>
+            )}
+          </div>
         </main>
       </div>
 
-      {/* Virtual Pet Widget */}
-      <VirtualPet />
+      <div className="lg:block hidden">
+        <VirtualPet />
+      </div>
     </div>
   );
 }

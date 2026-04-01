@@ -94,12 +94,12 @@ export function TopNav({ onMenuClick, searchQuery, setSearchQuery }: TopNavProps
         </div>
 
         {/* Search Bar */}
-        <div className="flex-1 max-w-xl mx-auto hidden lg:block">
+        <div className="flex-1 max-w-xl mx-auto">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search tasks..."
-              className="pl-10 h-9 bg-muted/50 border-0"
+              className="w-full pl-10 h-10 rounded-lg bg-muted/50 border-0"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
