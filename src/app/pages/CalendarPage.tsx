@@ -131,15 +131,16 @@ export function CalendarPage() {
 
             {/* Week View */}
             <TabsContent value="week" className="m-0">
-              <div className="grid grid-cols-7 gap-3">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                  <div
-                    key={day}
-                    className="p-3 text-center text-sm font-semibold text-muted-foreground uppercase tracking-wide"
-                  >
-                    {day}
-                  </div>
-                ))}
+              <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+                <div className="min-w-[700px] grid grid-cols-7 gap-3">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                    <div
+                      key={day}
+                      className="p-3 text-center text-sm font-semibold text-muted-foreground uppercase tracking-wide"
+                    >
+                      {day}
+                    </div>
+                  ))}
 
                 {weekDays.map((day, index) => {
                   const dayTasks = getTasksForDate(day);
@@ -204,11 +205,9 @@ export function CalendarPage() {
                   );
                 })}
               </div>
-            </TabsContent>
-
-            {/* Month View */}
-            <TabsContent value="month" className="m-0">
-              <div className="grid grid-cols-7 gap-2">
+          </div>
+        </TabsContent>
+                <div className="min-w-[700px] grid grid-cols-7 gap-2">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                   <div
                     key={day}
@@ -219,7 +218,7 @@ export function CalendarPage() {
                 ))}
 
                 {Array.from({ length: startingDayOfWeek }).map((_, index) => (
-                  <div key={`empty-${index}`} className="min-h-[120px]" />
+                  <div key={`empty-${index}`} className="min-h-[100px]" />
                 ))}
 
                 {Array.from({ length: daysInMonth }).map((_, index) => {
