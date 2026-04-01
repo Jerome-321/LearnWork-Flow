@@ -250,39 +250,89 @@ def verify_otp(request):
 @api_view(['POST', 'OPTIONS'])
 @permission_classes([AllowAny])
 def login(request):
+    """
+    Login endpoint with OTP support for new users.
+    Legacy users (without OTP records) can login without verification.
+    Always returns JSON responses.
+    """
     # Handle preflight requests
     if request.method == 'OPTIONS':
         return Response(status=200)
 
-    email = request.data.get("username")
-    password = request.data.get("password")
-
     try:
-        user_obj = User.objects.get(email=email)
-    except User.DoesNotExist:
-        return Response({"error": "Invalid credentials"}, status=401)
+        email = request.data.get("username")
+        password = request.data.get("password")
 
-    user = authenticate(username=user_obj.username, password=password)
+        # Validate input
+        if not email or not password:
+            return Response(
+                {"error": "username and password are required"},
+                status=400
+            )
 
-    if user is None:
-        return Response({"error": "Invalid credentials"}, status=401)
+        # Get user by email
+        try:
+            user_obj = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Invalid credentials"},
+                status=401
+            )
 
-    otp_obj = EmailOTP.objects.get(user=user)
+        # Authenticate with username and password
+        user = authenticate(username=user_obj.username, password=password)
 
-    if not otp_obj.is_verified:
-        return Response({"error": "Email not verified"}, status=403)
+        if user is None:
+            return Response(
+                {"error": "Invalid credentials"},
+                status=401
+            )
 
-    refresh = RefreshToken.for_user(user)
+        # Check if user has OTP record (new users)
+        otp_obj = EmailOTP.objects.filter(user=user).first()
 
-    return Response({
-        "access": str(refresh.access_token),
-        "refresh": str(refresh),
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email
-        }
-    })
+        # Legacy user handling: Users without OTP record can login directly
+        if otp_obj is None:
+            # Legacy user - allow login without OTP verification
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email
+                }
+            }, status=200)
+
+        # New user handling: Check OTP verification status
+        if not otp_obj.is_verified:
+            return Response(
+                {"error": "Email not verified. Please check your email for the OTP code."},
+                status=403
+            )
+
+        # New user with verified OTP - allow login
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email
+            }
+        }, status=200)
+
+    except Exception as e:
+        # Catch all unexpected errors and return JSON
+        import traceback
+        print("❌ LOGIN ERROR:", str(e))
+        print(traceback.format_exc())
+        return Response(
+            {"error": "An error occurred during login. Please try again."},
+            status=500
+        )
 
 
 
