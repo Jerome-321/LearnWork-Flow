@@ -81,7 +81,7 @@ export function TaskList({ tasks, selectedTaskId, onSelectTask }: TaskListProps)
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="text-6xl mb-4">📭</div>
+        <div className="text-6xl mb-4"></div>
         <h3 className="text-lg font-semibold mb-2">No tasks found</h3>
         <p className="text-sm text-muted-foreground">
           You're all caught up! Add a new task to get started.

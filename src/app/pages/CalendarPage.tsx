@@ -205,9 +205,13 @@ export function CalendarPage() {
                   );
                 })}
               </div>
-          </div>
-        </TabsContent>
-                <div className="min-w-[700px] grid grid-cols-7 gap-2">
+            </div>
+          </TabsContent>
+
+          {/* Month View */}
+          <TabsContent value="month" className="m-0">
+            <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+              <div className="min-w-[700px] grid grid-cols-7 gap-2">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                   <div
                     key={day}
@@ -267,7 +271,8 @@ export function CalendarPage() {
                   );
                 })}
               </div>
-            </TabsContent>
+            </div>
+          </TabsContent>
           </Tabs>
         </div>
       </div>
