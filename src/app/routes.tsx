@@ -3,6 +3,7 @@ import { Layout } from "./components/Layout";
 import { AllTasksPage } from "./pages/AllTasksPage";
 import { AcademicPage } from "./pages/AcademicPage";
 import { WorkPage } from "./pages/WorkPage";
+import { WorkSchedulePage } from "./pages/WorkSchedulePage";
 import { PersonalPage } from "./pages/PersonalPage";
 import { PriorityPage } from "./pages/PriorityPage";
 import { CalendarPage } from "./pages/CalendarPage";
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
       { index: true, Component: AllTasksPage },
       { path: "academic", Component: AcademicPage },
       { path: "work", Component: WorkPage },
+      { path: "work-schedule", Component: WorkSchedulePage },
       { path: "personal", Component: PersonalPage },
       { path: "priority", Component: PriorityPage },
       { path: "calendar", Component: CalendarPage },

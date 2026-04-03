@@ -3,7 +3,7 @@ import { flushSync } from "react-dom";
 import { Task, UserProgress, UserSettings } from "../types/task";
 import { useAuth } from "../contexts/AuthContext";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://learnwork-flow.onrender.com/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 interface NotificationSettings {
   notifications_enabled: boolean;
@@ -55,7 +55,31 @@ export function useTaskAPI() {
       const notifData = notifResponse.ok ? await notifResponse.json() : null;
 
       flushSync(() => {
-        setTasks(Array.isArray(data) ? data : []);
+        const processedTasks = (Array.isArray(data) ? data : []).map((task: any) => {
+          if ((task.category === 'work' || task.category === 'work_schedule') && task.description) {
+            try {
+              const parsed = JSON.parse(task.description);
+
+              if (parsed && parsed.schedule) {
+                const schedule = parsed.schedule;
+                return {
+                  ...task,
+                  description: parsed.text || "",
+                  work_days: schedule.work_days || [],
+                  start_time: schedule.start_time || "",
+                  end_time: schedule.end_time || "",
+                  work_type: schedule.work_type || "",
+                };
+              }
+
+              return { ...task, ...parsed };
+            } catch {
+              return task;
+            }
+          }
+          return task;
+        });
+        setTasks(processedTasks);
         setProgress(progressData);
         setNotificationSettings(notifData);
       });
@@ -102,10 +126,41 @@ export function useTaskAPI() {
 
   const addTask = async (task: Omit<Task, "id" | "createdAt"> & { image?: File | null }) => {
     try {
+      const taskToSend = { ...task };
+
+      // For work tasks, serialize schedule data into description
+      if (task.category === 'work' || task.category === 'work_schedule') {
+        const existingDescription = task.description || "";
+
+        try {
+          const parsed = JSON.parse(existingDescription);
+
+          if (parsed && parsed.schedule) {
+            taskToSend.description = existingDescription;
+          } else {
+            const scheduleData = {
+              work_days: task.work_days,
+              start_time: task.start_time,
+              end_time: task.end_time,
+              work_type: task.work_type,
+            };
+            taskToSend.description = JSON.stringify({ text: "", schedule: scheduleData });
+          }
+        } catch {
+          const scheduleData = {
+            work_days: task.work_days,
+            start_time: task.start_time,
+            end_time: task.end_time,
+            work_type: task.work_type,
+          };
+          taskToSend.description = JSON.stringify({ text: "", schedule: scheduleData });
+        }
+      }
+
       const formData = new FormData();
 
       // Add all task fields to FormData
-      Object.entries(task).forEach(([key, value]) => {
+      Object.entries(taskToSend).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           if (key === 'image' && value instanceof File) {
             formData.append('image', value);
@@ -133,10 +188,23 @@ export function useTaskAPI() {
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
     try {
+      const updatesToSend = { ...updates };
+
+      // For work tasks, serialize schedule data into description
+      if (updates.category === 'work' || (updates.work_days || updates.start_time || updates.end_time || updates.work_type)) {
+        const scheduleData = {
+          work_days: updates.work_days,
+          start_time: updates.start_time,
+          end_time: updates.end_time,
+          work_type: updates.work_type,
+        };
+        updatesToSend.description = JSON.stringify(scheduleData);
+      }
+
       await fetch(API_URL + "/tasks/" + id + "/", {
         method: "PATCH",
         headers: getAuthHeaders(),
-        body: JSON.stringify(updates)
+        body: JSON.stringify(updatesToSend)
       });
 
       triggerReloadWithLoading();

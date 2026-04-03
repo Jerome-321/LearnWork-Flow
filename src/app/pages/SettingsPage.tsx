@@ -42,7 +42,7 @@ export function SettingsPage() {
   const { isSubscribed, isLoading, permission, isSupported, subscriptionChecked, subscribe, unsubscribe, requestNotificationPermission, checkSubscriptionStatus } = usePushNotifications();
   const { signOut, user, getAccessToken } = useAuth();
 
-  const API_URL = import.meta.env.VITE_API_URL || "https://learnwork-flow.onrender.com/api";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
   const sendTestNotification = async () => {
     try {

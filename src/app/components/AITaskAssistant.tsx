@@ -28,6 +28,11 @@ interface AISuggestion {
   priority: TaskPriority;
   timeOfDay: "morning" | "afternoon" | "evening";
   productivity_score?: number;
+  // Work schedule fields
+  work_days?: string[];
+  start_time?: string;
+  end_time?: string;
+  work_type?: string;
 }
 
 interface AITaskAssistantProps {
@@ -52,7 +57,7 @@ export function AITaskAssistant({
   onHide,
 }: AITaskAssistantProps) {
 
-  const { analyzeTaskAI } = useTaskAPI();
+  const { analyzeTaskAI, tasks } = useTaskAPI();
 
   const [suggestion, setSuggestion] = useState<AISuggestion | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -93,6 +98,16 @@ export function AITaskAssistant({
 
     try {
 
+      // For work tasks, check for conflicts and suggest alternative times
+      if (category === 'work') {
+        const conflictFreeSuggestion = findConflictFreeTime();
+        if (conflictFreeSuggestion) {
+          setSuggestion(conflictFreeSuggestion);
+          setIsAnalyzing(false);
+          return;
+        }
+      }
+
       // ✅ IMPROVED: Pass priority and dueDate to API
       const result = await analyzeTaskAI(title, description, category, priority, dueDate);
 
@@ -128,6 +143,61 @@ export function AITaskAssistant({
 
     setIsAnalyzing(false);
 
+  };
+
+  // Find conflict-free time for work schedules
+  const findConflictFreeTime = (): AISuggestion | null => {
+    // Get all academic tasks
+    const academicTasks = tasks.filter(t => t.category === 'academic');
+    
+    // Common work hours to check
+    const workHours = [
+      { start: "09:00", end: "17:00", timeOfDay: "morning" as const },
+      { start: "10:00", end: "18:00", timeOfDay: "morning" as const },
+      { start: "13:00", end: "17:00", timeOfDay: "afternoon" as const },
+      { start: "14:00", end: "18:00", timeOfDay: "afternoon" as const },
+      { start: "19:00", end: "22:00", timeOfDay: "evening" as const },
+    ];
+
+    // Work days (assuming Monday-Friday for now)
+    const workDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+    for (const slot of workHours) {
+      let hasConflict = false;
+      
+      for (const day of workDays) {
+        for (const academicTask of academicTasks) {
+          const academicDate = new Date(academicTask.dueDate);
+          const academicDay = academicDate.toLocaleDateString('en-US', { weekday: 'long' });
+          
+          if (academicDay === day) {
+            const academicTime = academicDate.toTimeString().slice(0, 5);
+            if (slot.start < academicTime && slot.end > academicTime) {
+              hasConflict = true;
+              break;
+            }
+          }
+        }
+        if (hasConflict) break;
+      }
+      
+      if (!hasConflict) {
+        return {
+          suggested_time: slot.start,
+          estimated_duration: "8 hours",
+          reason: `Suggested work schedule (${slot.start}-${slot.end}) avoids conflicts with your academic schedule`,
+          priority: priority,
+          timeOfDay: slot.timeOfDay,
+          productivity_score: 85,
+          work_days: workDays,
+          start_time: slot.start,
+          end_time: slot.end,
+          work_type: "office",
+        };
+      }
+    }
+
+    return null; // No conflict-free slot found
   };
 
 

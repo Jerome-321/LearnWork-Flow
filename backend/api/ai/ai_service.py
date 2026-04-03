@@ -1,7 +1,7 @@
 from .ollama_ai import analyze_task_with_ai
 from .rule_scheduler import rule_scheduler
 from .ml_optimizer import optimize_time
-from .groq_ai import groq_schedule
+from .groq_ai import groq_schedule, groq_work_schedule_suggestion
 from .task_analyzer import TaskAnalyzer
 from datetime import datetime
 
@@ -185,3 +185,13 @@ def _get_time_of_day(time_str: str) -> str:
             return "evening"
     except:
         return "evening"
+
+
+def generate_work_schedule_suggestion(work_schedule, tasks):
+    """
+    AI-powered work schedule optimization suggestions
+    """
+    # Get AI suggestion from Groq
+    ai_suggestion = groq_work_schedule_suggestion(work_schedule, tasks)
+    
+    return ai_suggestion

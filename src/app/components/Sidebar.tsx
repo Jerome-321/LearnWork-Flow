@@ -49,6 +49,12 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
       count: getCategoryCount("work"),
     },
     {
+      path: "/work-schedule",
+      icon: Briefcase,
+      label: "Work Schedule",
+      count: getCategoryCount("work"),
+    },
+    {
       path: "/personal",
       icon: User,
       label: "Personal",

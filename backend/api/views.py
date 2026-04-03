@@ -1,6 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -9,11 +9,11 @@ from django.contrib.auth import authenticate
 from django.conf import settings
 from django.utils import timezone
 
-from .models import Task, UserProgress, Notification, UserNotificationSettings, PushSubscription
-from .serializers import TaskSerializer, NotificationSerializer, UserNotificationSettingsSerializer
+from .models import Task, UserProgress, Notification, UserNotificationSettings, PushSubscription, WorkSchedule
+from .serializers import TaskSerializer, NotificationSerializer, UserNotificationSettingsSerializer, WorkScheduleSerializer
 
 from rest_framework.decorators import api_view, permission_classes
-from .ai.ai_service import generate_schedule
+from .ai.ai_service import generate_schedule, generate_work_schedule_suggestion
 
 # Push notification utilities
 from pywebpush import webpush, WebPushException
@@ -30,6 +30,16 @@ def format_time_12h(time_str):
         return t.strftime("%I:%M %p").lstrip("0")
     except:
         return time_str
+
+def create_notification(user, notification_type, title, message, task=None):
+    """Helper function to create notifications"""
+    Notification.objects.create(
+        user=user,
+        notification_type=notification_type,
+        title=title,
+        message=message,
+        task=task
+    )
     
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
@@ -40,6 +50,20 @@ class TaskViewSet(viewsets.ModelViewSet):
         return Task.objects.filter(user=self.request.user).order_by("-createdAt")
 
     def perform_create(self, serializer):
+        # Check for schedule conflicts if this is a work task
+        data = serializer.validated_data
+        if data.get('category') == 'work':
+            conflict = self.check_schedule_conflict(data)
+            if conflict:
+                # Return warning but still allow creation
+                task = serializer.save(user=self.request.user)
+                # Could add a custom response here, but for now just save
+                return Response({
+                    'task': TaskSerializer(task).data,
+                    'conflict': True,
+                    'message': 'Schedule conflict detected with academic tasks'
+                })
+        
         task = serializer.save(user=self.request.user)
         
         # ✅ NEW: Create notification for new task
@@ -50,6 +74,41 @@ class TaskViewSet(viewsets.ModelViewSet):
             message=f"'{task.title}' has been added to your tasks.",
             task=task
         )
+
+    def check_schedule_conflict(self, work_data):
+        """Check if work schedule conflicts with academic tasks"""
+        try:
+            # Parse schedule data from description
+            import json
+            schedule_data = json.loads(work_data.get('description', '{}'))
+            work_days = schedule_data.get('work_days', [])
+            start_time = schedule_data.get('start_time')
+            end_time = schedule_data.get('end_time')
+            
+            if not work_days or not start_time or not end_time:
+                return False
+            
+            # Get all academic tasks for this user
+            academic_tasks = Task.objects.filter(
+                user=self.request.user,
+                category='academic'
+            )
+            
+            for academic_task in academic_tasks:
+                academic_date = academic_task.dueDate
+                if academic_date:
+                    academic_day = academic_date.strftime('%A')  # Monday, Tuesday, etc.
+                    academic_time = academic_date.strftime('%H:%M')
+                    
+                    if academic_day in work_days:
+                        # Check time overlap
+                        if start_time < academic_time < end_time:
+                            return True
+                            
+        except (json.JSONDecodeError, AttributeError):
+            pass
+        
+        return False
 
     def perform_update(self, serializer):
         # ✅ FIX #1: Get original task state BEFORE saving
@@ -132,6 +191,39 @@ class TaskViewSet(viewsets.ModelViewSet):
 
             progress.petLevel = max(1, progress.totalPoints // 100 + 1)
             progress.save()
+
+
+class WorkScheduleViewSet(viewsets.ModelViewSet):
+    queryset = WorkSchedule.objects.all()
+    serializer_class = WorkScheduleSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return WorkSchedule.objects.filter(user=self.request.user).order_by("-created_at")
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+    @action(detail=False, methods=['post'])
+    def suggest(self, request):
+        """
+        Get AI-powered work schedule suggestions
+        """
+        work_schedule_data = request.data
+        user = request.user
+        
+        # Get user's tasks for conflict detection
+        tasks = Task.objects.filter(user=user).values(
+            'title', 'dueDate', 'category'
+        )
+        
+        from .ai.ai_service import generate_work_schedule_suggestion
+        suggestion = generate_work_schedule_suggestion(work_schedule_data, list(tasks))
+        
+        return Response(suggestion)
 
 
 # REGISTER

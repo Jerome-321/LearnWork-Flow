@@ -13,7 +13,7 @@ interface LeaderboardUser {
   tasksCompleted: number;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || "https://learnwork-flow.onrender.com/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 export function PetTab() {
   const { getAccessToken } = useAuth();

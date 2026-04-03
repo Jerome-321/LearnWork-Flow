@@ -21,7 +21,7 @@ export function usePushNotifications() {
   const [isSupported, setIsSupported] = useState(false);
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || "https://learnwork-flow.onrender.com/api";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
   useEffect(() => {
     const supported = 'serviceWorker' in navigator && 'PushManager' in window;

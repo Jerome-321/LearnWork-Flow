@@ -13,7 +13,7 @@ interface AuthContextType {
   refreshSession: () => Promise<void>;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || "https://learnwork-flow.onrender.com/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 // Debug: Log the API URL being used
 console.log("AuthContext API_URL:", API_URL);

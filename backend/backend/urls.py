@@ -6,8 +6,9 @@ from rest_framework.routers import DefaultRouter
 from django.http import JsonResponse
 
 from api.views import (
-    TaskViewSet, 
-    login, 
+    TaskViewSet,
+    WorkScheduleViewSet,
+    login,
     register,
     verify_otp,
     progress,
@@ -27,6 +28,7 @@ from api.views import (
 # Router
 router = DefaultRouter()
 router.register(r'tasks', TaskViewSet)
+router.register(r'work-schedules', WorkScheduleViewSet)
 
 # ✅ Health check (SAFE)
 def health_check(request):

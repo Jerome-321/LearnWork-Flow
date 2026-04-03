@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Badge } from "../components/ui/badge";
 import { Card } from "../components/ui/card";
 import { TaskActions } from "../components/TaskActions";
+import { useWorkScheduleAPI } from "../hooks/useWorkScheduleAPI";
 
 interface OutletContext {
   selectedTaskId: string | null;
@@ -16,6 +17,7 @@ interface OutletContext {
 
 export function CalendarPage() {
   const { tasks, setSelectedTaskId } = useOutletContext<OutletContext>();
+  const { schedules } = useWorkScheduleAPI();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"week" | "month">("week");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -47,13 +49,31 @@ export function CalendarPage() {
   const toLocalDateStr = (date: Date) =>
     `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 
+  const formatTime12Hour = (time24: string) => {
+    if (!time24) return "";
+    const [h, m] = time24.split(":");
+    const hour = parseInt(h, 10);
+    const suffix = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${m} ${suffix}`;
+  };
+
   const getTasksForDate = (date: Date) => {
     const dateStr = toLocalDateStr(date);
-    return tasks.filter((task) => {
+    const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+    
+    const dayTasks = tasks.filter((task) => {
       if (!task.dueDate) return false;
       const d = new Date(task.dueDate);
       return toLocalDateStr(d) === dateStr;
     });
+
+    // Add work schedules for this day of the week
+    const daySchedules = schedules.filter((schedule) => 
+      schedule.work_days.includes(dayName)
+    );
+
+    return { tasks: dayTasks, schedules: daySchedules };
   };
 
   const navigateMonth = (direction: number) => {
@@ -71,7 +91,7 @@ export function CalendarPage() {
 
   const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
   const weekDays = getWeekDays(currentDate);
-  const selectedDateTasks = selectedDate ? getTasksForDate(selectedDate) : [];
+  const selectedDateData = selectedDate ? getTasksForDate(selectedDate) : { tasks: [], schedules: [] };
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -151,7 +171,9 @@ export function CalendarPage() {
                   ))}
 
                 {weekDays.map((day, index) => {
-                  const dayTasks = getTasksForDate(day);
+                  const dayData = getTasksForDate(day);
+                  const dayTasks = dayData.tasks;
+                  const daySchedules = dayData.schedules;
                   const isToday = day.toDateString() === new Date().toDateString();
 
                   return (
@@ -179,30 +201,59 @@ export function CalendarPage() {
                       </div>
                       
                       <div className="p-2 space-y-1 max-h-[140px] overflow-y-auto">
-                        {dayTasks.length > 0 ? (
-                          dayTasks.map((task) => (
-                            <button
-                              key={task.id}
-                              onClick={() => setSelectedTaskId(task.id)}
-                              className={`w-full rounded-md p-2 text-left text-xs transition-all hover:shadow-sm ${
-                                task.completed
-                                  ? "bg-green-500/10 hover:bg-green-500/20 text-green-700 dark:text-green-300"
-                                  : "bg-primary/10 hover:bg-primary/20 text-foreground"
-                              }`}
-                            >
-                              <div className={`font-medium truncate ${
-                                task.completed ? "line-through" : ""
-                              }`}>
-                                {task.title}
+                        {dayTasks.length > 0 || daySchedules.length > 0 ? (
+                          <>
+                            {dayTasks.map((task) => {
+                              const isWork = task.category === 'work';
+                              const isAcademic = task.category === 'academic';
+                              return (
+                                <button
+                                  key={task.id}
+                                  onClick={() => setSelectedTaskId(task.id)}
+                                  className={`w-full rounded-md p-2 text-left text-xs transition-all hover:shadow-sm ${
+                                    task.completed
+                                      ? "bg-green-500/10 hover:bg-green-500/20 text-green-700 dark:text-green-300"
+                                      : isWork
+                                      ? "bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300"
+                                      : isAcademic
+                                      ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300"
+                                      : "bg-primary/10 hover:bg-primary/20 text-foreground"
+                                  }`}
+                                >
+                                  <div className={`font-medium truncate ${
+                                    task.completed ? "line-through" : ""
+                                  }`}>
+                                    {task.title}
+                                  </div>
+                                  <div className="text-muted-foreground text-xs">
+                                    {new Date(task.dueDate).toLocaleTimeString("en-US", {
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                    })}
+                                  </div>
+                                  <Badge variant="outline" className="text-xs mt-1">
+                                    {task.category}
+                                  </Badge>
+                                </button>
+                              );
+                            })}
+                            {daySchedules.map((schedule) => (
+                              <div
+                                key={schedule.id}
+                                className="w-full rounded-md p-2 text-left text-xs bg-orange-500/10 text-orange-700 dark:text-orange-300"
+                              >
+                                <div className="font-medium truncate">
+                                  {schedule.job_title || "Work Schedule"}
+                                </div>
+                                <div className="text-muted-foreground text-xs">
+                                  {formatTime12Hour(schedule.start_time)} - {formatTime12Hour(schedule.end_time)}
+                                </div>
+                                <Badge variant="outline" className="text-xs mt-1">
+                                  work
+                                </Badge>
                               </div>
-                              <div className="text-muted-foreground text-xs">
-                                {new Date(task.dueDate).toLocaleTimeString("en-US", {
-                                  hour: "numeric",
-                                  minute: "2-digit",
-                                })}
-                              </div>
-                            </button>
-                          ))
+                            ))}
+                          </>
                         ) : (
                           <div className="flex items-center justify-center h-[120px] text-muted-foreground text-xs">
                             No tasks
@@ -239,7 +290,9 @@ export function CalendarPage() {
                     currentDate.getMonth(),
                     index + 1
                   );
-                  const dayTasks = getTasksForDate(day);
+                  const dayData = getTasksForDate(day);
+                  const dayTasks = dayData.tasks;
+                  const daySchedules = dayData.schedules;
                   const isToday = day.toDateString() === new Date().toDateString();
                   const isSelected = selectedDate?.toDateString() === day.toDateString();
 
@@ -252,7 +305,7 @@ export function CalendarPage() {
                           ? "border-2 border-primary ring-2 ring-primary/20"
                           : isToday
                           ? "border-2 border-primary bg-primary/5"
-                          : dayTasks.length > 0
+                          : dayTasks.length > 0 || daySchedules.length > 0
                           ? "bg-muted/50"
                           : ""
                       }`}
@@ -269,12 +322,12 @@ export function CalendarPage() {
                           <div className="h-2 w-2 rounded-full bg-primary" />
                         )}
                       </div>
-                      {dayTasks.length > 0 && (
+                      {(dayTasks.length > 0 || daySchedules.length > 0) && (
                         <Badge
                           variant="secondary"
                           className="text-xs font-semibold"
                         >
-                          {dayTasks.length} task{dayTasks.length > 1 ? "s" : ""}
+                          {dayTasks.length + daySchedules.length} item{dayTasks.length + daySchedules.length > 1 ? "s" : ""}
                         </Badge>
                       )}
                     </Card>
@@ -298,11 +351,11 @@ export function CalendarPage() {
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                {selectedDateTasks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No tasks for this day.</p>
+                {selectedDateData.tasks.length === 0 && selectedDateData.schedules.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No tasks or schedules for this day.</p>
                 ) : (
                   <div className="space-y-2">
-                    {selectedDateTasks.map((task) => (
+                    {selectedDateData.tasks.map((task) => (
                       <button
                         key={task.id}
                         onClick={() => setSelectedTaskId(task.id)}
@@ -321,6 +374,21 @@ export function CalendarPage() {
                           <Badge variant="outline" className="text-xs capitalize">{task.category}</Badge>
                         </div>
                       </button>
+                    ))}
+                    {selectedDateData.schedules.map((schedule) => (
+                      <div
+                        key={schedule.id}
+                        className="w-full rounded-md p-3 text-left text-sm bg-orange-500/10 text-orange-700 dark:text-orange-300"
+                      >
+                        <div className="font-medium">
+                          {schedule.job_title || "Work Schedule"}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
+                          <span>{formatTime12Hour(schedule.start_time)} - {formatTime12Hour(schedule.end_time)}</span>
+                          <Badge variant="outline" className="text-xs capitalize">work</Badge>
+                          <Badge variant="outline" className="text-xs capitalize">{schedule.work_type}</Badge>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}

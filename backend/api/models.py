@@ -37,6 +37,22 @@ class Task(models.Model):
         return f"{self.title} ({self.user.username})"
 
 
+class WorkSchedule(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    job_title = models.CharField(max_length=255)
+    work_days = models.JSONField(default=list)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    work_type = models.CharField(max_length=50)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.job_title} ({self.user.username})"
+
 class UserProgress(models.Model):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE)

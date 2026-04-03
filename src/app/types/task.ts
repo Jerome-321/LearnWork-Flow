@@ -1,4 +1,4 @@
-export type TaskCategory = "academic" | "work" | "personal";
+export type TaskCategory = "academic" | "work" | "work_schedule" | "personal";
 export type TaskPriority = "low" | "medium" | "high";
 
 export interface Task {
@@ -15,6 +15,23 @@ export interface Task {
   tags?: string[];
   subtasks?: { id: string; title: string; completed: boolean }[];
   createdAt: string;
+  // Work schedule fields (stored in description as JSON for work tasks)
+  work_days?: string[];
+  start_time?: string;
+  end_time?: string;
+  work_type?: string;
+}
+
+export interface WorkSchedule {
+  id: string;
+  user?: string;
+  job_title: string;
+  work_days: string[];
+  start_time: string;
+  end_time: string;
+  work_type: string;
+  notes: string;
+  created_at: string;
 }
 
 export interface UserProgress {
