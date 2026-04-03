@@ -19,7 +19,7 @@ import {
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { TaskCategory, TaskPriority } from "../types/task";
-import { useTaskAPI } from "../hooks/useTaskAPI";
+import { useAuth } from "../contexts/AuthContext";
 
 interface AISuggestion {
   suggested_time: string;
@@ -28,11 +28,6 @@ interface AISuggestion {
   priority: TaskPriority;
   timeOfDay: "morning" | "afternoon" | "evening";
   productivity_score?: number;
-  // Work schedule fields
-  work_days?: string[];
-  start_time?: string;
-  end_time?: string;
-  work_type?: string;
 }
 
 interface AITaskAssistantProps {
@@ -41,9 +36,12 @@ interface AITaskAssistantProps {
   category: TaskCategory;
   priority?: TaskPriority;
   dueDate?: string;
+  dueTime?: string;
   onApplySuggestion: (suggestion: Partial<AISuggestion>) => void;
   show: boolean;
   onHide: () => void;
+  onConflictStatus?: (status: { conflict: boolean; message: string }) => void;
+  autoAnalyze?: boolean; // if true, run analysis during typing (controlled by parent)
 }
 
 export function AITaskAssistant({
@@ -52,24 +50,49 @@ export function AITaskAssistant({
   category,
   priority = "medium",
   dueDate = "",
+  dueTime = "",
   onApplySuggestion,
   show,
   onHide,
+  onConflictStatus,
+  autoAnalyze = false,
 }: AITaskAssistantProps) {
-
-  const { analyzeTaskAI, tasks } = useTaskAPI();
+  const { getAccessToken } = useAuth();
 
   const [suggestion, setSuggestion] = useState<AISuggestion | null>(null);
+  const [clarifyingQuestions, setClarifyingQuestions] = useState<string[]>([]);
+  const [conflictWarning, setConflictWarning] = useState<{
+    taskTitle: string;
+    taskTime: string;
+    conflictWith: string;
+    conflictTime: string;
+    suggestedTime: string;
+    reason: string;
+  } | null>(null);
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    if (!autoAnalyze) {
+      return; // submit-only flow: no live analysis while typing
+    }
 
-    if (!show || !title.trim()) {
+    if (!show) {
       setSuggestion(null);
       setError(null);
+      setConflictWarning(null);
+      return;
+    }
+
+    // Show suggestions as soon as user has basic info (title OR category)
+    if (!title.trim() && !category) {
+      setSuggestion(null);
+      setError(null);
+      setConflictWarning(null);
       return;
     }
 
@@ -77,130 +100,193 @@ export function AITaskAssistant({
       clearTimeout(debounceTimerRef.current);
     }
 
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
     setIsAnalyzing(true);
     setError(null);
 
+    // Show suggestions immediately when user starts typing, even with incomplete data
     debounceTimerRef.current = setTimeout(() => {
       analyzeTask();
-    }, 500); // ✅ IMPROVED: Reduced debounce to 500ms for faster response
+    }, 200); // Even more responsive for during-input suggestions
 
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-
-  }, [title, description, category, priority, dueDate, show]);
-
-
+  }, [title, description, category, priority, dueDate, dueTime, show]);
 
   const analyzeTask = async () => {
-
     try {
+      setClarifyingQuestions([]);
+      setConflictWarning(null);
 
-      // For work tasks, check for conflicts and suggest alternative times
-      if (category === 'work') {
-        const conflictFreeSuggestion = findConflictFreeTime();
-        if (conflictFreeSuggestion) {
-          setSuggestion(conflictFreeSuggestion);
-          setIsAnalyzing(false);
-          return;
+      // Provide suggestions even with minimal information
+      const hasBasicInfo = title.trim() || category;
+      if (!hasBasicInfo) {
+        setSuggestion(null);
+        setIsAnalyzing(false);
+        return;
+      }
+      const hasScheduleInfo = dueDate && dueTime;
+      const hasDescription = description && description.trim().length > 0;
+
+      // Show clarifying questions for missing critical info
+      const missing: string[] = [];
+      if (!dueDate) missing.push("What day should this task happen?");
+      if (!dueTime) missing.push("What time should it start?");
+      if (!hasDescription) missing.push("How long will this task take?");
+
+      // Still show questions but don't block suggestions
+      if (missing.length > 0) {
+        setClarifyingQuestions(missing.slice(0, 2));
+      }
+
+      // Create abort controller for this request
+      abortControllerRef.current = new AbortController();
+
+      const token = getAccessToken();
+      const payload = {
+        title: title || `${category || 'personal'} task`,
+        description: description || `${category || 'personal'} task`,
+        category: category || "personal",
+        priority: priority || "medium",
+        dueDate: dueDate || new Date().toISOString().split('T')[0],
+        dueTime: dueTime || "18:00",
+        estimatedDuration: hasDescription ? (description.length > 100 ? 120 : 60) : 60,
+      };
+
+      // Backend conflict check always runs (helpful even if AI call fails)
+      let scheduleData: any = null;
+      try {
+        const scheduleResponse = await fetch(
+          `${import.meta.env.VITE_API_URL || "http://localhost:8000/api"}/tasks/schedule_suggestion/`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+            signal: abortControllerRef.current?.signal,
+          }
+        );
+
+        if (scheduleResponse.ok) {
+          scheduleData = await scheduleResponse.json();
         }
+      } catch (err) {
+        // no action, conflict check is optional
       }
 
-      // ✅ IMPROVED: Pass priority and dueDate to API
-      const result = await analyzeTaskAI(title, description, category, priority, dueDate);
+      if (scheduleData) {
+        if (scheduleData.type === "conflict" && scheduleData.conflict) {
+          const conflict = scheduleData.conflict;
+          setConflictWarning({
+            taskTitle: conflict.task || title,
+            taskTime: conflict.scheduled_time || `${dueTime || "TBD"} - ${formatTime12Hour(dueTime || "18:00")}`,
+            conflictWith: conflict.work_schedule || "Work schedule",
+            conflictTime: conflict.work_schedule_time || "TBD",
+            suggestedTime: scheduleData.suggested_time || "18:00",
+            reason: scheduleData.reason || "Conflict detected with your schedule",
+          });
 
-      if (result) {
+          setSuggestion((prev) => ({
+            ...(prev || {
+              suggested_time: "18:00",
+              estimated_duration: "1–2 hours",
+              reason: "Review this schedule for conflicts",
+              priority: priority || "medium",
+              timeOfDay: getTimeOfDay(dueTime || "18:00"),
+            }),
+            suggested_time: scheduleData.suggested_time || prev?.suggested_time || "18:00",
+            reason: scheduleData.reason || prev?.reason || "Conflict detected with your schedule",
+          }));
 
-        const aiSuggestion: AISuggestion = {
-          suggested_time: result.suggested_time || "18:00",
-          estimated_duration: result.estimated_duration || "1–2 hours",
-          reason: result.reason || "AI-optimized scheduling",
-          priority: result.priority || priority || "medium",
-          timeOfDay: result.timeOfDay || getTimeOfDay(result.suggested_time || "18:00"),
-          productivity_score: result.productivity_score,
-        };
+          onConflictStatus?.({
+            conflict: true,
+            message: `${conflict.work_schedule || "Conflict"} (${conflict.work_schedule_time || "TBD"})`,
+          });
+        } else {
+          setConflictWarning(null);
+          onConflictStatus?.({
+            conflict: false,
+            message: "No conflict detected",
+          });
 
-        setSuggestion(aiSuggestion);
-
-      } else {
-
-        const fallback = generateFallback(title, description, category, priority);
-        setSuggestion(fallback);
-
-      }
-
-    } catch (error) {
-
-      console.log("AI endpoint failed → using fallback");
-      setError("Using smart fallback suggestion");
-
-      const fallback = generateFallback(title, description, category, priority);
-      setSuggestion(fallback);
-
-    }
-
-    setIsAnalyzing(false);
-
-  };
-
-  // Find conflict-free time for work schedules
-  const findConflictFreeTime = (): AISuggestion | null => {
-    // Get all academic tasks
-    const academicTasks = tasks.filter(t => t.category === 'academic');
-    
-    // Common work hours to check
-    const workHours = [
-      { start: "09:00", end: "17:00", timeOfDay: "morning" as const },
-      { start: "10:00", end: "18:00", timeOfDay: "morning" as const },
-      { start: "13:00", end: "17:00", timeOfDay: "afternoon" as const },
-      { start: "14:00", end: "18:00", timeOfDay: "afternoon" as const },
-      { start: "19:00", end: "22:00", timeOfDay: "evening" as const },
-    ];
-
-    // Work days (assuming Monday-Friday for now)
-    const workDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-    for (const slot of workHours) {
-      let hasConflict = false;
-      
-      for (const day of workDays) {
-        for (const academicTask of academicTasks) {
-          const academicDate = new Date(academicTask.dueDate);
-          const academicDay = academicDate.toLocaleDateString('en-US', { weekday: 'long' });
-          
-          if (academicDay === day) {
-            const academicTime = academicDate.toTimeString().slice(0, 5);
-            if (slot.start < academicTime && slot.end > academicTime) {
-              hasConflict = true;
-              break;
-            }
+          if (scheduleData.type === "suggestion") {
+            setSuggestion((prev) => ({
+              ...(prev || {}),
+              suggested_time: scheduleData.suggested_time || prev?.suggested_time || "14:00",
+              estimated_duration: scheduleData.estimated_duration || prev?.estimated_duration || "1 hour",
+              reason: scheduleData.reason || prev?.reason || "Schedule optimized for availability",
+              priority: scheduleData.priority || prev?.priority || (priority || "medium"),
+              timeOfDay: scheduleData.timeOfDay || prev?.timeOfDay || getTimeOfDay(scheduleData.suggested_time || dueTime || "18:00"),
+              productivity_score: scheduleData.productivity_score || prev?.productivity_score || 0.8,
+            }));
           }
         }
-        if (hasConflict) break;
       }
-      
-      if (!hasConflict) {
-        return {
-          suggested_time: slot.start,
-          estimated_duration: "8 hours",
-          reason: `Suggested work schedule (${slot.start}-${slot.end}) avoids conflicts with your academic schedule`,
-          priority: priority,
-          timeOfDay: slot.timeOfDay,
-          productivity_score: 85,
-          work_days: workDays,
-          start_time: slot.start,
-          end_time: slot.end,
-          work_type: "office",
+
+      // AI analysis call remains, but should not block conflict display
+      let aiResult: any = null;
+      try {
+        const aiResponse = await fetch(
+          `${import.meta.env.VITE_API_URL || "http://localhost:8000/api"}/ai/analyze/`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+            signal: abortControllerRef.current?.signal,
+          }
+        );
+        if (aiResponse.ok) {
+          aiResult = await aiResponse.json();
+        }
+      } catch (err) {
+        aiResult = null;
+      }
+
+      if (aiResult) {
+        const aiSuggestion: AISuggestion = {
+          suggested_time: aiResult.suggested_time || formatTime12Hour(dueTime || "18:00"),
+          estimated_duration: aiResult.estimated_duration || "1 hour",
+          reason: aiResult.reason || "Schedule optimized for productivity",
+          priority: aiResult.priority || priority || "medium",
+          timeOfDay: aiResult.timeOfDay || getTimeOfDay(aiResult.suggested_time || dueTime || "18:00"),
+          productivity_score: aiResult.productivity_score || 0.8,
         };
+        setSuggestion(aiSuggestion);
+        setError(null);
+      } else if (!scheduleData || scheduleData.type !== "conflict") {
+        // fallback only if no conflict and no AI suggestion produced
+        setError("Using smart fallback");
+        setSuggestion(generateFallback(title, description, category, priority));
       }
+
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        // Request was cancelled, don't update state
+        return;
+      }
+      console.error("AI analysis error:", err);
+      setError("Using smart fallback");
+      const fallback = generateFallback(title, description, category, priority);
+      setSuggestion(fallback);
+      onConflictStatus?.({
+        conflict: false,
+        message: "Unable to analyze schedule (using fallback)",
+      });
     }
-
-    return null; // No conflict-free slot found
+    setIsAnalyzing(false);
   };
-
-
 
   const generateFallback = (
     title: string,
@@ -208,15 +294,10 @@ export function AITaskAssistant({
     category: TaskCategory,
     taskPriority: TaskPriority
   ): AISuggestion => {
-
-    const text = (title + " " + description).toLowerCase();
-
-    // ✅ IMPROVED: Smart fallback with working-student context
     let suggestedTime = "18:00";
     let estimatedDuration = "1–2 hours";
     let reason = "";
 
-    // Category-based defaults
     if (category === "academic") {
       suggestedTime = taskPriority === "high" ? "17:00" : "19:00";
       reason = "Evening study sessions give you focused time after classes, ideal for deep work on academic tasks.";
@@ -228,14 +309,13 @@ export function AITaskAssistant({
       reason = "I recommend this time to balance productivity with your daily routine.";
     }
 
-    // Priority override
     if (taskPriority === "high") {
       reason = "This is high priority, so I'm scheduling it early when you're most alert.";
     } else if (taskPriority === "low") {
       reason = "Low priority tasks fit best in slower parts of your day or gaps between focus work.";
     }
 
-    // Duration hints
+    const text = (title + " " + description).toLowerCase();
     if (text.includes("call") || text.includes("email") || text.includes("quick")) {
       estimatedDuration = "15–30 minutes";
     } else if (text.includes("project") || text.includes("essay") || text.includes("study")) {
@@ -249,10 +329,21 @@ export function AITaskAssistant({
       priority: taskPriority,
       timeOfDay: getTimeOfDay(suggestedTime),
     };
-
   };
 
+  const formatTime12Hour = (timeStr: string): string => {
+    if (!timeStr) return "";
+    const [hourStr, minStr] = timeStr.split(":");
+    if (!hourStr || !minStr) return timeStr;
 
+    let hour = parseInt(hourStr, 10);
+    const minute = minStr;
+    const period = hour >= 12 ? "PM" : "AM";
+    if (hour === 0) hour = 12;
+    if (hour > 12) hour -= 12;
+
+    return `${hour}:${minute} ${period}`;
+  };
 
   const getTimeOfDay = (timeStr: string): "morning" | "afternoon" | "evening" => {
     try {
@@ -264,8 +355,6 @@ export function AITaskAssistant({
       return "evening";
     }
   };
-
-
 
   const getTimeOfDayIcon = (timeOfDay: string) => {
     switch (timeOfDay) {
@@ -280,10 +369,7 @@ export function AITaskAssistant({
     }
   };
 
-
-
   const applyAllSuggestions = () => {
-
     if (!suggestion) return;
 
     onApplySuggestion({
@@ -293,10 +379,7 @@ export function AITaskAssistant({
       priority: suggestion.priority,
       timeOfDay: suggestion.timeOfDay,
     });
-
   };
-
-
 
   if (!show) return null;
 
@@ -307,14 +390,12 @@ export function AITaskAssistant({
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: -400, opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="w-full lg:w-96"
+        className="w-full h-full min-h-0 max-h-full flex flex-col"
       >
-        <Card className="border-2 shadow-xl h-full flex flex-col bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
-
+        <Card className="border-2 shadow-xl h-full min-h-0 flex flex-col bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-black to-slate-800 dark:from-white dark:to-slate-200 p-4">
             <div className="flex items-center justify-between">
-
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-white dark:text-black animate-pulse" />
                 <div>
@@ -323,12 +404,22 @@ export function AITaskAssistant({
                   </h3>
                   {isAnalyzing && (
                     <p className="text-[10px] text-white/70 dark:text-black/70">
-                      🔄 Reading your task...
+                      Reading your task...
                     </p>
                   )}
                   {error && (
                     <p className="text-[10px] text-yellow-200 dark:text-yellow-300">
                       ⚡ {error}
+                    </p>
+                  )}
+                  {!isAnalyzing && !error && suggestion && (
+                    <p className="text-[10px] text-white/70 dark:text-black/70">
+                      Suggestions ready!
+                    </p>
+                  )}
+                  {!isAnalyzing && !error && !suggestion && clarifyingQuestions.length > 0 && (
+                    <p className="text-[10px] text-white/70 dark:text-black/70">
+                      Gathering insights...
                     </p>
                   )}
                 </div>
@@ -342,15 +433,11 @@ export function AITaskAssistant({
               >
                 <X className="h-4 w-4" />
               </Button>
-
             </div>
           </div>
 
-
-
           {/* Content */}
-          <div className="p-4 space-y-4 flex-1 overflow-y-auto">
-
+          <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0">
             {!title.trim() ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Lightbulb className="h-8 w-8 text-muted-foreground/40 mb-2" />
@@ -365,17 +452,100 @@ export function AITaskAssistant({
                 </div>
                 <p className="text-xs text-muted-foreground">Thinking of the best time...</p>
               </div>
-            ) : suggestion ? (
+            ) : clarifyingQuestions.length > 0 && !suggestion ? (
+              <div className="space-y-4">
+                <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                      Quick Suggestions
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {clarifyingQuestions.map((question, index) => (
+                      <div key={index} className="text-xs text-slate-700 dark:text-slate-300">
+                        💡 {question}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                    Fill in these details to get personalized scheduling suggestions
+                  </p>
+                </div>
 
+                {/* Show basic suggestions even with incomplete data */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Basic Recommendation
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-700 dark:text-slate-300">
+                    Based on your task type, I recommend scheduling this during:
+                  </div>
+                  <div className="text-sm font-semibold text-green-700 dark:text-green-300">
+                    {category === 'academic' ? 'Evening study hours (6-9 PM)' :
+                     category === 'work' ? 'Peak productivity time (9 AM-12 PM)' :
+                     'Flexible personal time'}
+                  </div>
+                </div>
+              </div>
+            ) : conflictWarning ? (
               <>
-                {/* ✅ IMPROVED: Human-like explanation */}
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                  <p className="font-semibold text-sm text-red-700 dark:text-red-300">
+                    ⚠ Conflict Detected
+                  </p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300">
+                    Task: {conflictWarning.taskTitle}
+                  </p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300">
+                    Time: {conflictWarning.taskTime}
+                  </p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300">
+                    Conflicts with: {conflictWarning.conflictWith}
+                  </p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300">
+                    Time: {conflictWarning.conflictTime}
+                  </p>
+                  <div className="mt-2 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <p className="font-semibold text-xs">Suggestion</p>
+                    <p className="text-xs">Move to {formatTime12Hour(conflictWarning.suggestedTime)}</p>
+                  </div>
+                </div>
+
+                {/* Also render the suggestion if available */}
+                {suggestion && (
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      {getTimeOfDayIcon(suggestion.timeOfDay)}
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Suggested Schedule
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                        {suggestion.suggested_time}
+                      </span>
+                      <span className="text-xs text-slate-600 dark:text-slate-400">
+                        {suggestion.estimated_duration}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-700 dark:text-slate-300">{suggestion.reason}</p>
+                  </div>
+                )}
+              </>
+            ) : suggestion ? (
+              <>
+                {/* Explanation */}
                 <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                   <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
                     {suggestion.reason}
                   </p>
                 </div>
 
-                {/* ✅ IMPROVED: Suggested time with visual indicator */}
+                {/* Suggested time */}
                 <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-3 space-y-2">
                   <div className="flex items-center gap-2">
                     {getTimeOfDayIcon(suggestion.timeOfDay)}
@@ -393,17 +563,14 @@ export function AITaskAssistant({
                   </div>
                 </div>
 
-                {/* ✅ IMPROVED: Smart details grid */}
+                {/* Details grid */}
                 <div className="grid grid-cols-2 gap-2">
-
                   <div className="bg-card border rounded-lg p-2.5 space-y-1">
                     <div className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-400">
                       <Flag className="h-3.5 w-3.5" />
                       Priority
                     </div>
-                    <p className="text-sm font-semibold capitalize">
-                      {suggestion.priority}
-                    </p>
+                    <p className="text-sm font-semibold capitalize">{suggestion.priority}</p>
                   </div>
 
                   <div className="bg-card border rounded-lg p-2.5 space-y-1">
@@ -411,14 +578,11 @@ export function AITaskAssistant({
                       <Clock className="h-3.5 w-3.5" />
                       Category
                     </div>
-                    <p className="text-sm font-semibold capitalize">
-                      {category}
-                    </p>
+                    <p className="text-sm font-semibold capitalize">{category}</p>
                   </div>
-
                 </div>
 
-                {/* ✅ IMPROVED: Apply button with action icon */}
+                {/* Apply button */}
                 <Button
                   onClick={applyAllSuggestions}
                   className="w-full bg-gradient-to-r from-slate-900 to-slate-700 hover:from-slate-800 hover:to-slate-600 dark:from-white dark:to-slate-200 dark:hover:from-slate-100 dark:hover:to-slate-300 text-white dark:text-black font-semibold"
@@ -428,26 +592,21 @@ export function AITaskAssistant({
                   <ChevronRight className="ml-auto h-4 w-4" />
                 </Button>
 
-                {/* Productivity tip if available */}
+                {/* Productivity tip */}
                 {suggestion.productivity_score && (
                   <div className="text-xs text-muted-foreground text-center pt-2 border-t">
                     ✨ Productivity Score: {Math.round(suggestion.productivity_score * 100)}%
                   </div>
                 )}
-
               </>
-
             ) : (
               <div className="flex justify-center py-8">
                 <Sparkles className="h-8 w-8 text-muted-foreground/30" />
               </div>
             )}
-
           </div>
-
         </Card>
       </motion.div>
     </AnimatePresence>
   );
-
 }

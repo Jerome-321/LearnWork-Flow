@@ -18,19 +18,69 @@ export function VirtualPet() {
     petLevel: 0,
   };
 
-  const getPetImage = (level: number) => {
-    // Use known image file names from PET folder
-    if (level === 0) return "/PET/lvl0.png";
-    if (level === 0.1) return "/PET/lvl0.1.png";
-    if (level === 0.11) return "/PET/level0.1.png";
+  // Ensure new users with egg stage start at level 0, not 1
+  const currentLevel = progressData.petStage === "egg" ? 0 : progressData.petLevel;
 
-    const rounded = Math.floor(level);
-    if (rounded >= 1 && rounded <= 4) {
-      return `/PET/lvl${rounded}.png`;
+  const STORAGE_KEY = "LearnWorkFlowPetAssignments";
+
+  const levelMapping: Record<string, { folder: string; category: string; options: string[] }> = {
+    "0": { folder: "PET LEVEL 0", category: "egg", options: ["level 0.png", "level 0.0.png"] },
+    "0.1": { folder: "PET LEVEL 0.1", category: "hatchling", options: ["level 0.1.png", "level0.1.png"] },
+    "1": { folder: "PET LEVEL 1", category: "teen", options: ["level 1.png", "level1.png"] },
+    "2": { folder: "PET LEVEL 2", category: "young", options: ["level 2.png", "level2.png"] },
+    "3": { folder: "PET LEVEL 3", category: "adult", options: ["level 3.png", "level3.png"] },
+    "4": { folder: "PET LEVEL 4", category: "master", options: ["level 4.png", "level4.png"] },
+  };
+
+  const getStorageAssignments = (): Record<string, string> => {
+    if (typeof window === "undefined") return {};
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const setStorageAssignments = (assignments: Record<string, string>) => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(assignments));
+    } catch {
+      // ignore localStorage errors
+    }
+  };
+
+  const pickRandom = <T,>(items: T[]): T => {
+    return items[Math.floor(Math.random() * items.length)];
+  };
+
+  const getPetImage = (level: number): string => {
+    const levelKey = level === 0.1 ? "0.1" : String(level).replace(".0", "");
+    const mapping = levelMapping[levelKey];
+    const assignments = getStorageAssignments();
+
+    const resolvePath = (fileName: string) => {
+      const folder = mapping?.folder ? `PET/${mapping.folder}` : "PET";
+      return encodeURI(`/${folder}/${fileName}`);
+    };
+
+    if (assignments[levelKey]) {
+      return resolvePath(assignments[levelKey]);
     }
 
-    // Fallback to egg
-    return "/PET/lvl0.png";
+    if (!mapping?.options?.length) {
+      return encodeURI("/PET/PET LEVEL 0/level 0.png");
+    }
+
+    const chosen = pickRandom(mapping.options);
+    const newAssignments = { ...assignments, [levelKey]: chosen };
+    setStorageAssignments(newAssignments);
+
+    const categoryTag = mapping.category || "egg";
+    console.debug(`Pet level ${levelKey} (${categoryTag}) selected: ${chosen}`);
+
+    return resolvePath(chosen);
   };
 
   const getPetName = () => {
@@ -70,18 +120,19 @@ export function VirtualPet() {
   const nextMilestone = getNextMilestone();
   const progressToNext = ((progressData.totalPoints % nextMilestone) / nextMilestone) * 100;
 
-  const defaultPetImage = getPetImage(progressData.petLevel ?? 0);
+  const defaultPetImage = getPetImage(currentLevel);
   const [petImage, setPetImage] = useState(defaultPetImage);
 
   useEffect(() => {
-    setPetImage(getPetImage(progressData.petLevel ?? 0));
-  }, [progressData.petLevel]);
+    setPetImage(getPetImage(currentLevel));
+  }, [currentLevel]);
 
   const onPetImageError = (event: SyntheticEvent<HTMLImageElement, Event>) => {
     const target = event.currentTarget;
-    if (target.src.indexOf("/PET/lvl0.png") === -1) {
-      target.src = "/PET/lvl0.png";
-      setPetImage("/PET/lvl0.png");
+    const fallback = encodeURI("/PET/PET LEVEL 0/level 0.png");
+    if (target.src !== fallback) {
+      target.src = fallback;
+      setPetImage(fallback);
     }
   };
 
@@ -109,7 +160,7 @@ export function VirtualPet() {
               <div className="flex flex-col items-center">
                 {/* Pet Display */}
                 <motion.div
-                  className="relative h-24 w-24 mb-2"
+                  className="relative h-32 w-32 mb-2"
                   animate={{
                     y: [0, -8, 0],
                     scale: [1, 1.02, 1],
@@ -126,6 +177,7 @@ export function VirtualPet() {
                     alt={getPetName()}
                     onError={onPetImageError}
                     className="h-full w-full rounded-lg object-contain"
+                    style={{ maxWidth: "100%", maxHeight: "100%", display: "block" }}
                   />
 
                   {progressData.petLevel >= 5 && (
@@ -150,7 +202,7 @@ export function VirtualPet() {
                   {getPetName()}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Level {progressData.petLevel}
+                  Level {currentLevel}
                 </p>
 
                 {/* Pet Message */}
@@ -209,7 +261,8 @@ export function VirtualPet() {
               src={petImage}
               alt={getPetName()}
               onError={onPetImageError}
-              className="h-8 w-8 object-contain filter drop-shadow-md"
+              className="h-16 w-16 object-contain filter drop-shadow-md"
+              style={{ maxWidth: "100%", maxHeight: "100%", display: "block" }}
               animate={{
                 rotate: [0, 10, -10, 0],
               }}

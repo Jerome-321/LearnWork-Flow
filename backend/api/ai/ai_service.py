@@ -20,17 +20,21 @@ def generate_schedule(task):
     # Get comprehensive task analysis
     analysis = TaskAnalyzer.analyze(title, description, category, due_date)
     
-    # Get AI reasoning (Groq)
-    ai_analysis = groq_schedule(task)
-    
+# Get AI reasoning (Groq) safely: non-critical external dependency
+    try:
+        ai_analysis = groq_schedule(task) or {}
+    except Exception as e:
+        print(f"groq_schedule failed, using local fallback: {e}")
+        ai_analysis = {}
+
     # Get smart rule-based scheduling time
     best_time = rule_scheduler(task)
-    
+
     # ML productivity optimization
     productivity_score = optimize_time(18)
-    
+
     # ✅ STEP 2: Combine analysis + AI for smarter scheduling
-    suggested_start = ai_analysis.get("suggestedStart") or best_time
+    suggested_start = ai_analysis.get("suggestedStart") or best_time or "18:00"
     suggested_end = ai_analysis.get("suggestedEnd")
     reason = ai_analysis.get("reason", "")
     
@@ -57,7 +61,7 @@ def generate_schedule(task):
             title,
             description,
             analysis,
-            suggested_start,
+            suggested_start or "18:00",
             category
         )
     

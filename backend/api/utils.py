@@ -1,5 +1,5 @@
 import random
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives, send_mail
 
 
 def generate_otp():
@@ -95,7 +95,19 @@ def _send_otp_email(email, otp):
         <p style="margin:0 0 16px;color:#71717a;font-size:13px;text-align:center;">Need help? Reply to this email and we'll assist you quickly.</p>
         <p style="margin:0;color:#a1a1aa;font-size:12px;text-align:center;">LearnWork-Flow helps you hit milestones with organized tasks and reminders.</p>
     """
-    _send_email_via_resend(email, 'Verify your LearnWork-Flow account', _base_email(content))
+    try:
+        send_mail(
+            subject='Verify your LearnWork-Flow account',
+            message='',  # Plain text version (empty for HTML-only)
+            html_message=_base_email(content),
+            from_email='LearnWork-Flow <jerome.natividad7704@gmail.com>',
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        print(f"✅ OTP email sent to {email} via Django SMTP")
+    except Exception as e:
+        print(f"❌ Failed to send OTP email to {email}: {str(e)}")
+        raise
 
 
 # TASK REMINDER EMAIL
@@ -121,7 +133,23 @@ def _send_task_email(user_email, task_title, time_left, task_id=None):
         <a href="{task_url}" style="display:block;text-align:center;background:#09090b;color:white;text-decoration:none;padding:12px;border-radius:8px;font-weight:bold;font-size:15px;">View Task</a>
         <p style="margin:16px 0 0;color:#71717a;font-size:13px;text-align:center;">Stay on top of your tasks and keep the streak going 🚀</p>
     """
-    _send_email_via_resend(user_email, f'Task Reminder: {task_title}', _base_email(content))
+
+    subject = f'Task Reminder: {task_title}'
+    html_message = _base_email(content)
+
+    try:
+        send_mail(
+            subject=subject,
+            message='',
+            from_email='LearnWork-Flow <jerome.natividad7704@gmail.com>',
+            recipient_list=[user_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        print(f"✅ Task reminder email sent to {user_email} via Django SMTP")
+    except Exception as e:
+        print(f"⚠️ SMTP task email failed: {e}. Falling back to Resend API.")
+        _send_email_via_resend(user_email, subject, html_message)
 
 
 # NOTIFICATION EMAIL

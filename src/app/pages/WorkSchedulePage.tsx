@@ -171,7 +171,7 @@ export function WorkSchedulePage() {
             <div>
               <h1 className="text-2xl font-semibold">Work Schedule</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {schedules.length} schedules � {academicTasks.length} academic tasks
+                {schedules.length} schedules • {academicTasks.length} academic tasks
               </p>
             </div>
           </div>
@@ -267,84 +267,89 @@ export function WorkSchedulePage() {
             <CardTitle>{editing ? "Edit Work Schedule" : "Add Work Schedule"}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label>Work Days</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
-                  {weekdays.map((day) => (
-                    <label key={day} className="flex items-center gap-2">
-                      <Checkbox
-                        checked={workDays.includes(day)}
-                        onCheckedChange={() => toggleDay(day)}
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Form */}
+              <div className="flex-1">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label>Work Days</Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                      {weekdays.map((day) => (
+                        <label key={day} className="flex items-center gap-2">
+                          <Checkbox
+                            checked={workDays.includes(day)}
+                            onCheckedChange={() => toggleDay(day)}
+                          />
+                          <span>{day}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="ws-start-time">Start Time</Label>
+                      <Input
+                        id="ws-start-time"
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
                       />
-                      <span>{day}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="ws-start-time">Start Time</Label>
-                  <Input
-                    id="ws-start-time"
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="ws-end-time">End Time</Label>
-                  <Input
-                    id="ws-end-time"
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label>Work Type</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  {['Morning', 'Afternoon', 'Night', 'Flexible'].map((type) => (
-                    <label key={type} className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="workType"
-                        value={type}
-                        checked={workType === type}
-                        onChange={() => setWorkType(type)}
-                        className="h-3 w-3"
+                    </div>
+                    <div>
+                      <Label htmlFor="ws-end-time">End Time</Label>
+                      <Input
+                        id="ws-end-time"
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
                       />
-                      <span>{type}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+                    </div>
+                  </div>
 
-              <div>
-                <Label htmlFor="ws-notes">Notes</Label>
-                <Textarea
-                  id="ws-notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={4}
-                  placeholder="Optional notes"
-                />
-              </div>
+                  <div>
+                    <Label>Work Type</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {['Morning', 'Afternoon', 'Night', 'Flexible'].map((type) => (
+                        <label key={type} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="workType"
+                            value={type}
+                            checked={workType === type}
+                            onChange={() => setWorkType(type)}
+                            className="h-3 w-3"
+                          />
+                          <span>{type}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className="flex gap-2">
-                <Button type="submit" className="flex-1">
-                  {editing ? "Update" : "Create"}
-                </Button>
-                {editing && (
-                  <Button variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                )}
+                  <div>
+                    <Label htmlFor="ws-notes">Notes</Label>
+                    <Textarea
+                      id="ws-notes"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={4}
+                      placeholder="Optional notes"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button type="submit" className="flex-1">
+                      {editing ? "Update" : "Create"}
+                    </Button>
+                    {editing && (
+                      <Button variant="outline" onClick={resetForm}>
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                </form>
               </div>
-            </form>
+            </div>
           </CardContent>
         </Card>
       </div>

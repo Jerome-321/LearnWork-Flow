@@ -1,4 +1,4 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
@@ -13,7 +13,7 @@ from .models import Task, UserProgress, Notification, UserNotificationSettings, 
 from .serializers import TaskSerializer, NotificationSerializer, UserNotificationSettingsSerializer, WorkScheduleSerializer
 
 from rest_framework.decorators import api_view, permission_classes
-from .ai.ai_service import generate_schedule, generate_work_schedule_suggestion
+from .ai.ai_service import generate_schedule, generate_work_schedule_suggestion, groq_task_schedule_suggestion
 
 # Push notification utilities
 from pywebpush import webpush, WebPushException
@@ -49,31 +49,36 @@ class TaskViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Task.objects.filter(user=self.request.user).order_by("-createdAt")
 
-    def perform_create(self, serializer):
-        # Check for schedule conflicts if this is a work task
-        data = serializer.validated_data
-        if data.get('category') == 'work':
-            conflict = self.check_schedule_conflict(data)
-            if conflict:
-                # Return warning but still allow creation
-                task = serializer.save(user=self.request.user)
-                # Could add a custom response here, but for now just save
-                return Response({
-                    'task': TaskSerializer(task).data,
-                    'conflict': True,
-                    'message': 'Schedule conflict detected with academic tasks'
-                })
-        
-        task = serializer.save(user=self.request.user)
-        
-        # ✅ NEW: Create notification for new task
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        conflict = False
+        if serializer.validated_data.get('category') == 'work':
+            conflict = self.check_schedule_conflict(serializer.validated_data)
+
+        self.perform_create(serializer)
+
+        task = serializer.instance
         create_notification(
             user=self.request.user,
             notification_type="task_reminder",
-            title=f"New Task Created ",
+            title="New Task Created",
             message=f"'{task.title}' has been added to your tasks.",
             task=task
         )
+
+        response_data = TaskSerializer(task).data
+        if conflict:
+            response_data['conflict'] = True
+            response_data['message'] = 'Schedule conflict detected with academic tasks'
+
+        headers = self.get_success_headers(response_data)
+        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 
     def check_schedule_conflict(self, work_data):
         """Check if work schedule conflicts with academic tasks"""
@@ -205,15 +210,38 @@ class TaskViewSet(viewsets.ModelViewSet):
             'id', 'job_title', 'work_days', 'start_time', 'end_time', 'work_type'
         ))
         
+        # Convert time objects to strings
+        for schedule in work_schedules:
+            if schedule.get('start_time'):
+                schedule['start_time'] = schedule['start_time'].strftime('%H:%M')
+            if schedule.get('end_time'):
+                schedule['end_time'] = schedule['end_time'].strftime('%H:%M')
+        
         # Get all user tasks for context
         all_tasks = list(Task.objects.filter(user=user).values(
             'id', 'title', 'dueDate', 'priority', 'category'
         ))
         
-        # Generate scheduling suggestion
-        suggestion = groq_task_schedule_suggestion(task_data, work_schedules, all_tasks)
+        # Convert datetime objects to ISO strings
+        for task in all_tasks:
+            if task.get('dueDate'):
+                task['dueDate'] = task['dueDate'].isoformat()
         
-        return Response(suggestion)
+        # Debug logging
+        # print(f"DEBUG: task_data = {task_data}")
+        # print(f"DEBUG: work_schedules = {work_schedules}")
+        # print(f"DEBUG: all_tasks = {all_tasks}")
+        
+        # Generate scheduling suggestion
+        try:
+            suggestion = groq_task_schedule_suggestion(task_data, work_schedules, all_tasks)
+            # print(f"DEBUG: suggestion result = {suggestion}")
+            return Response(suggestion)
+        except Exception as e:
+            # print(f"DEBUG: Error in groq_task_schedule_suggestion: {e}")
+            # import traceback
+            # traceback.print_exc()
+            return Response({"error": str(e)}, status=500)
 
 
 class WorkScheduleViewSet(viewsets.ModelViewSet):
@@ -502,43 +530,104 @@ def ai_analyze_task(request):
     priority = request.data.get("priority")
     dueDate = request.data.get("dueDate")
     estimatedDuration = request.data.get("estimatedDuration")
+    task_id = request.data.get("id")
 
     # Validate required fields
     if not title:
         return Response({"error": "title is required"}, status=400)
     if not category:
         return Response({"error": "category is required"}, status=400)
+    if not dueDate:
+        return Response({"error": "dueDate is required for AI analysis"}, status=400)
 
-    # Get user's existing tasks for context
-    tasks = Task.objects.filter(
+    # Get user's existing tasks for context (exclude current task if editing)
+    tasks_query = Task.objects.filter(
         user=request.user,
         completed=False
     )
+    if task_id:
+        tasks_query = tasks_query.exclude(id=task_id)
 
-    schedule = []
+    all_tasks = []
+    for task in tasks_query:
+        all_tasks.append({
+            "id": task.id,
+            "title": task.title,
+            "dueDate": task.dueDate.isoformat() if hasattr(task.dueDate, 'isoformat') else str(task.dueDate),
+            "priority": task.priority,
+            "estimatedDuration": task.estimatedDuration or 60,
+            "completed": task.completed
+        })
 
-    for task in tasks:
-        if task.dueDate:
-            schedule.append({
-                "title": task.title,
-                "dueDate": task.dueDate.isoformat() if hasattr(task.dueDate, 'isoformat') else str(task.dueDate),
-                "priority": task.priority,
-                "duration": task.estimatedDuration,
-                "completed": task.completed
-            })
+    # Get user's work schedules
+    work_schedules = WorkSchedule.objects.filter(user=request.user)
+    schedules_data = []
+    for schedule in work_schedules:
+        schedules_data.append({
+            "id": schedule.id,
+            "job_title": schedule.job_title,
+            "start_time": schedule.start_time.strftime("%H:%M") if schedule.start_time else "09:00",
+            "end_time": schedule.end_time.strftime("%H:%M") if schedule.end_time else "17:00",
+            "work_days": schedule.work_days or []
+        })
 
-    # Pass all parameters to AI scheduler for better optimization
-    result = generate_schedule({
+    # Build task data
+    task_data = {
+        "id": task_id,
         "title": title,
         "description": description,
         "category": category,
         "priority": priority or "medium",
         "dueDate": dueDate,
-        "estimatedDuration": estimatedDuration or 60,
-        "existingTasks": schedule
-    })
+        "estimatedDuration": estimatedDuration or 60
+    }
 
-    return Response(result)
+    # Call new 3-step analysis function
+    try:
+        from .ai.groq_ai import groq_task_schedule_suggestion
+        
+        # DEBUG: Log what we're sending
+        print(f"[DEBUG AI] Task: {task_data}")
+        print(f"[DEBUG AI] Existing tasks count: {len(all_tasks)}")
+        for t in all_tasks:
+            print(f"  - {t['title']} at {t['dueDate']}")
+        print(f"[DEBUG AI] Work schedules count: {len(schedules_data)}")
+        for s in schedules_data:
+            print(f"  - {s['job_title']}: {s['work_days']}")
+        
+        result = groq_task_schedule_suggestion(task_data, schedules_data, all_tasks)
+        print(f"[DEBUG AI] Result: {result}")
+        
+        # Also include existing tasks for context in the response
+        result['existing_tasks'] = [
+            {
+                'title': t['title'],
+                'priority': t['priority'],
+                'dueDate': t['dueDate']
+            } for t in all_tasks
+        ]
+        
+        return Response(result, status=200)
+
+    except Exception as e:
+        # Log error for debugging and return graceful fallback
+        print(f"AI analyze failure: {e}")
+        return Response({
+            "type": "suggestion",
+            "analysis_step": "No Conflicts - Optimal Time Suggestion",
+            "suggested_time": "18:00",
+            "priority": priority or "medium",
+            "reason": "AI service unavailable; using default scheduling.",
+            "estimated_duration": "1–2 hours",
+            "work_schedules": schedules_data,
+            "existing_tasks": [
+                {
+                    'title': t['title'],
+                    'priority': t['priority'],
+                    'dueDate': t['dueDate']
+                } for t in all_tasks
+            ]
+        }, status=200)
 
 
 # ✅ NEW: NOTIFICATION APIs

@@ -67,7 +67,7 @@ export function Layout() {
         </main>
       </div>
 
-      <div className="lg:block hidden">
+      <div className="block">
         <VirtualPet />
       </div>
     </div>

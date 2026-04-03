@@ -22,10 +22,12 @@ import {
 import { Badge } from "./ui/badge";
 import { Checkbox } from "./ui/checkbox";
 import { useTaskAPI } from "../hooks/useTaskAPI";
+import { useWorkScheduleAPI } from "../hooks/useWorkScheduleAPI";
 import { Task, TaskCategory, TaskPriority } from "../types/task";
 import { toast } from "sonner";
 import { AITaskAssistant } from "./AITaskAssistant";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { useAuth } from "../contexts/AuthContext";
 
 interface TaskActionsProps {
   task?: Task;
@@ -34,10 +36,31 @@ interface TaskActionsProps {
 
 export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
   const { addTask, updateTask, deleteTask, toggleTaskComplete, tasks, getSchedulingSuggestion } = useTaskAPI();
+  const { schedules: workSchedules } = useWorkScheduleAPI();
+  const { getAccessToken } = useAuth();
   const [open, setOpen] = useState(false);
-  const [showAI, setShowAI] = useState(true); // AI shown by default
+  const [showAI, setShowAI] = useState(true); // show left-panel AI by default
   const [isEditing, setIsEditing] = useState(false);
+  const [isAnalyzingSubmit, setIsAnalyzingSubmit] = useState(false);
+  const [pendingTaskPayload, setPendingTaskPayload] = useState<any>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<any>(null);
+  const [showAiModal, setShowAiModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const formatTime12Hour = (timeString: string) => {
+    if (!timeString) return "";
+
+    const [hourStr, minStr] = timeString.split(":");
+    if (!hourStr || !minStr) return timeString;
+
+    let hour = parseInt(hourStr, 10);
+    const minute = minStr;
+    const period = hour >= 12 ? "PM" : "AM";
+    if (hour === 0) hour = 12;
+    if (hour > 12) hour -= 12;
+
+    return `${hour}:${minute} ${period}`;
+  };
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [description, setDescription] = useState(task?.description || "");
   const [formData, setFormData] = useState({
@@ -158,6 +181,76 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
     });
   };
 
+  const buildTaskPayload = (overrides: any = {}) => {
+    const dueDateTime = formData.dueTime
+      ? `${formData.dueDate}T${formData.dueTime}:00`
+      : `${formData.dueDate}T23:59:00`;
+
+    const points =
+      formData.priority === "high" ? 50 : formData.priority === "medium" ? 30 : 15;
+
+    return {
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+      priority: formData.priority,
+      dueDate: dueDateTime,
+      points,
+      image: formData.image,
+      link: formData.link || undefined,
+      work_days: formData.work_days,
+      start_time: formData.start_time,
+      end_time: formData.end_time,
+      work_type: formData.work_type,
+      completed: task ? undefined : false,
+      ...overrides,
+    };
+  };
+
+  const resetForm = () => {
+    setOpen(false);
+    setShowAI(true);
+    setImagePreview(null);
+    setFormData({
+      title: "",
+      description: "",
+      category: "personal",
+      priority: "medium",
+      dueDate: "",
+      dueTime: "",
+      image: null,
+      link: "",
+    });
+    setAiSuggestion(null);
+    setShowAiModal(false);
+  };
+
+  const saveTask = async (payload: any) => {
+    try {
+      if (task) {
+        await updateTask(task.id, payload);
+        toast.success("Task updated successfully");
+        onClose?.();
+      } else {
+        const createdTask = await addTask(payload, false);
+        if (createdTask?.conflict) {
+          toast.error(`Schedule conflict detected: ${createdTask.message}`);
+        } else {
+          toast.success("Task created successfully");
+        }
+        resetForm();
+        setTimeout(() => window.location.reload(), 150);
+      }
+    } catch (error: any) {
+      console.error("Error saving task:", error);
+      toast.error(error?.message || "Failed to save task");
+    }
+  };
+
+  const proceedWithOriginal = async (payload: any) => {
+    await saveTask(payload);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -171,94 +264,118 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
       return;
     }
 
-    const dueDateTime = formData.dueTime
-      ? `${formData.dueDate}T${formData.dueTime}:00`
-      : `${formData.dueDate}T23:59:00`;
+    const taskPayload = buildTaskPayload();
 
-    const points =
-      formData.priority === "high" ? 50 : formData.priority === "medium" ? 30 : 15;
+    const proceedWithOriginal = async () => {
+      await saveTask(taskPayload);
+    };
 
     try {
-      if (task) {
-        // Update existing task
-        await updateTask(task.id, {
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
-          priority: formData.priority,
-          dueDate: dueDateTime,
-          points,
-          image: formData.image,
-          link: formData.link || undefined,
-          work_days: formData.work_days,
-          start_time: formData.start_time,
-          end_time: formData.end_time,
-          work_type: formData.work_type,
-        });
-        toast.success("Task updated successfully");
-        onClose?.();
-      } else {
-        // Create new task
-        await addTask({
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
-          priority: formData.priority,
-          dueDate: dueDateTime,
-          completed: false,
-          points,
-          image: formData.image,
-          link: formData.link || undefined,
-        });
+      setIsAnalyzingSubmit(true);
+      setPendingTaskPayload(taskPayload);
 
-        toast.success("Task created successfully");
-        
-        // Get intelligent scheduling suggestion
-        try {
-          const suggestion = await getSchedulingSuggestion({
-            title: formData.title,
-            description: formData.description,
-            category: formData.category,
-            priority: formData.priority,
-            dueDate: dueDateTime,
-          });
-          
-          if (suggestion) {
-            if (suggestion.type === 'conflict') {
-              // Show conflict warning
-              toast.error(
-                `${suggestion.title}\n${suggestion.conflict.task} (${suggestion.conflict.priority})\nConflicts with: ${suggestion.conflict.work_schedule}\n\n${suggestion.suggestion}`,
-                { duration: 8000 }
-              );
-            } else if (suggestion.type === 'suggestion') {
-              // Show scheduling suggestion
-              toast.info(
-                `${suggestion.title}\n${suggestion.suggested_time}\n${suggestion.reason}\n\n${suggestion.tip}`,
-                { duration: 8000 }
-              );
-            }
-          }
-        } catch (err) {
-          console.error("Error getting scheduling suggestion:", err);
-        }
-        
-        setOpen(false);
-        setShowAI(true);
-        setImagePreview(null);
-        setFormData({
-          title: "",
-          description: "",
-          category: "personal",
-          priority: "medium",
-          dueDate: "",
-          dueTime: "",
-          image: null,
-          link: "",
+      // Show loading while AI analyzes
+      const token = getAccessToken();
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000/api"}/ai/analyze/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
+          priority: formData.priority,
+          dueDate: taskPayload.dueDate,
+          estimatedDuration: formData.estimatedDuration || 60,
+          existingTasks: tasks || [],
+        }),
+      });
+
+      let aiData: any = null;
+      if (response.ok) {
+        aiData = await response.json();
+      }
+
+      if (!aiData) {
+        setAiSuggestion({
+          suggested_time: formData.dueTime || "18:00",
+          priority: formData.priority,
+          reason: response.ok
+            ? "AI did not return a recommendation, review your schedule."
+            : "AI service unavailable; please confirm your task setup.",
+          estimated_duration: "1–2 hours",
+        });
+      } else {
+        const hasConflict = aiData.type === "conflict" || aiData.conflict;
+        const hasBetterTime = !!aiData.suggested_time && aiData.suggested_time !== formData.dueTime;
+        const hasPriorityChange = !!aiData.priority && aiData.priority !== formData.priority;
+
+        setAiSuggestion({
+          ...aiData,
+          suggested_time: aiData.suggested_time || formData.dueTime || "18:00",
+          priority: aiData.priority || formData.priority,
+          reason:
+            aiData.reason ||
+            (hasConflict
+              ? "Conflict detected with your schedule"
+              : hasBetterTime
+              ? "A better time was suggested"
+              : hasPriorityChange
+              ? "Priority adjustment recommended"
+              : "AI completed analysis. No significant changes needed."),
         });
       }
-    } catch (error: any) {
-      console.error("Error saving task:", error);
-      toast.error(error?.message || "Failed to save task");
+
+      // Ensure minimal loading perceptibility
+      await new Promise((r) => setTimeout(r, 600));
+      setShowAiModal(true);
+      return;
+    } catch (err) {
+      console.error("Error during AI flow:", err);
+      toast.error("Failed to analyze task with AI. Please try again.");
+    } finally {
+      setIsAnalyzingSubmit(false);
+    }
+  };
+
+  const handleAIModalDecline = async () => {
+    setShowAiModal(false);
+    setAiSuggestion(null);
+    setPendingTaskPayload(null);
+    toast.error("Task creation canceled as requested");
+    resetForm();
+  };
+
+  const handleAIModalAccept = async () => {
+    if (!aiSuggestion || !pendingTaskPayload) {
+      toast.error("No AI suggestion available to apply");
+      return;
+    }
+
+    const suggestedTime = aiSuggestion.suggested_time || formData.dueTime || pendingTaskPayload.dueTime;
+    const suggestedPriority = aiSuggestion.priority || formData.priority || pendingTaskPayload.priority;
+    const suggestedDuration = aiSuggestion.estimated_duration || formData.estimatedDuration || pendingTaskPayload.estimatedDuration || "60";
+
+    const finalPayload = {
+      ...pendingTaskPayload,
+      dueDate: `${formData.dueDate}T${suggestedTime}:00`,
+      priority: suggestedPriority,
+      estimatedDuration: Number(suggestedDuration?.toString().replace(/\D/g, "")) || 60,
+    };
+
+    try {
+      await addTask(finalPayload, true);
+      toast.success("Task created with AI suggestion applied");
+    } catch (err) {
+      console.error("Failed to create task after AI suggestion:", err);
+      toast.error("Failed to create task after AI suggestion");
+    } finally {
+      setPendingTaskPayload(null);
+      setAiSuggestion(null);
+      setShowAiModal(false);
+      resetForm();
     }
   };
 
@@ -347,15 +464,6 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
     }
   };
 
-  const toggleAI = () => {
-    if (!open) {
-      setOpen(true);
-      setShowAI(true);
-    } else {
-      setShowAI(!showAI);
-    }
-  };
-
   // If task is provided, render task detail view
   if (task) {
     return (
@@ -395,7 +503,7 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
                 />
                 <label
                   htmlFor={`task-detail-${task.id}`}
-                  className="text-sm font-medium cursor-pointer"
+                  className="text-sm font-medium cursor-pointer text-black"
                 >
                   {task.completed ? "Completed" : "Mark as complete"}
                 </label>
@@ -557,6 +665,15 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
     );
   }
 
+  const toggleAI = () => {
+    if (!open) {
+      setOpen(true);
+      setShowAI(true);
+    } else {
+      setShowAI(!showAI);
+    }
+  };
+
   // Default: render create task form
   return (
     <div className="flex items-center gap-2">
@@ -578,6 +695,157 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
         </Tooltip>
       </TooltipProvider>
 
+      {isAnalyzingSubmit && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/30 px-4">
+          <div className="flex items-center gap-2 rounded-lg bg-white p-4 text-sm font-medium shadow-lg">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700" />
+            Creating task and analyzing with AI models...
+          </div>
+          <p className="mt-2 text-xs text-white/90">Please wait while we generate tailored schedule suggestions.</p>
+        </div>
+      )}
+
+      <Dialog
+        open={showAiModal}
+        onOpenChange={(open) => {
+          if (!open && pendingTaskPayload) {
+            handleAIModalDecline();
+            return;
+          }
+          setShowAiModal(open);
+        }}
+      >
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-bold">
+              {aiSuggestion?.type === "conflict" ? "Schedule Conflict Detected" : "AI Scheduling Suggestion"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {aiSuggestion && (
+            <div className="space-y-4">
+              {/* Conflict Alert - if applicable */}
+              {aiSuggestion.type === "conflict" && (
+                <div className="border border-gray-300 p-3 rounded bg-gray-50">
+                  <div className="text-sm font-semibold text-gray-900 mb-2">Conflict Details:</div>
+                  {aiSuggestion.conflict_with_task && (
+                    <div className="text-sm text-gray-700 mb-1">
+                      <strong>Task Conflict:</strong> "{aiSuggestion.conflict_with_task}" at {aiSuggestion.conflict_time}
+                    </div>
+                  )}
+                  {aiSuggestion.conflict_with && !aiSuggestion.conflict_with_task && (
+                    <div className="text-sm text-gray-700 mb-1">
+                      <strong>Work Schedule Conflict:</strong> {aiSuggestion.conflict_with} ({aiSuggestion.work_schedule_time})
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Suggested Time - Main Focus */}
+              <div className="border-b pb-3">
+                <div className="text-sm font-semibold text-gray-600 mb-1">Suggested Time:</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {formatDueDate(formData.dueDate)} at {formatTime12Hour(aiSuggestion.suggested_time || formData.dueTime || "18:00")}
+                </div>
+              </div>
+
+              {/* Analysis Step */}
+              {aiSuggestion.analysis_step && (
+                <div className="border-b pb-3">
+                  <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Analysis</div>
+                  <div className="text-sm text-gray-800">{aiSuggestion.analysis_step}</div>
+                </div>
+              )}
+
+              {/* Work Schedules - if any */}
+              {aiSuggestion.work_schedules && aiSuggestion.work_schedules.length > 0 && (
+                <div className="border-b pb-3">
+                  <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Your Work Schedules</div>
+                  <div className="space-y-1">
+                    {aiSuggestion.work_schedules.map((schedule: any, idx: number) => (
+                      <div key={idx} className="text-sm text-gray-700">
+                        • <strong>{schedule.job_title}:</strong> {schedule.start_time} – {schedule.end_time}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Existing Tasks - if no work schedules but tasks exist */}
+              {(!aiSuggestion.work_schedules || aiSuggestion.work_schedules.length === 0) && 
+               aiSuggestion.existing_tasks && aiSuggestion.existing_tasks.length > 0 && (
+                <div className="border-b pb-3">
+                  <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Your Other Tasks Today</div>
+                  <div className="space-y-1">
+                    {aiSuggestion.existing_tasks.map((task: any, idx: number) => {
+                      const taskDate = new Date(task.dueDate);
+                      const today = new Date();
+                      const isToday = taskDate.toDateString() === today.toDateString();
+                      if (!isToday) return null;
+                      
+                      const taskTime = taskDate.toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      });
+                      
+                      return (
+                        <div key={idx} className="text-sm text-gray-700">
+                          • <strong>{task.title}</strong><span className="text-gray-500"> at {taskTime}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Reason & Details */}
+              <div className="space-y-2">
+                {aiSuggestion.reason && (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Analysis Details</div>
+                    <div className="text-sm text-gray-700">{aiSuggestion.reason}</div>
+                  </div>
+                )}
+                
+                {/* Priority & Duration */}
+                <div className="flex gap-4 text-sm">
+                  {aiSuggestion.priority && (
+                    <div>
+                      <span className="font-semibold text-gray-900">Priority:</span>{" "}
+                      <span className="text-gray-700 capitalize">{aiSuggestion.priority}</span>
+                    </div>
+                  )}
+                  {aiSuggestion.estimated_duration && (
+                    <div>
+                      <span className="font-semibold text-gray-900">Duration:</span>{" "}
+                      <span className="text-gray-700">{aiSuggestion.estimated_duration}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="mt-6 flex gap-3">
+            <Button
+              className="flex-1 bg-gray-900 hover:bg-gray-800 text-white"
+              onClick={handleAIModalAccept}
+            >
+              ✓ Accept
+            </Button>
+            <Button
+              className="flex-1 border border-gray-300 bg-white hover:bg-gray-50 text-gray-900"
+              variant="outline"
+              onClick={handleAIModalDecline}
+            >
+              ✕ Keep Original
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button className="gap-2">
@@ -586,25 +854,11 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-[95vw] lg:max-w-6xl p-0 gap-0 overflow-hidden">
-          <div className="flex flex-col lg:flex-row max-h-[90vh]">
-            {/* AI Assistant Panel - LEFT SIDE */}
-            {showAI && (
-              <div className="lg:border-r lg:max-h-[90vh] lg:overflow-y-auto">
-                <AITaskAssistant
-                  title={formData.title}
-                  description={formData.description}
-                  category={formData.category}
-                  priority={formData.priority}
-                  dueDate={formData.dueDate}
-                  onApplySuggestion={handleApplyAISuggestion}
-                  show={showAI && open}
-                  onHide={() => setShowAI(false)}
-                />
-              </div>
-            )}
+          <div className="flex flex-col lg:flex-row max-h-[calc(100vh-4rem)] lg:max-h-[calc(100vh-6rem)]">
+
 
             {/* Task Form - RIGHT SIDE */}
-            <div className="flex-1 p-6 overflow-y-auto">
+            <div className="flex-1 p-6 overflow-y-auto h-full max-h-full">
               <DialogHeader className="mb-4">
                 <DialogTitle>{task ? "Edit Task" : "Create New Task"}</DialogTitle>
                 <DialogDescription>
@@ -749,16 +1003,18 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
 
 
                 <div className="flex gap-2 pt-4">
-                  <Button type="submit" className="flex-1">
-                    {task ? "Update Task" : "Create Task"}
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={isAnalyzingSubmit}
+                  >
+                    {isAnalyzingSubmit ? "Creating task & analyzing..." : task ? "Update Task" : "Create Task"}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => {
-                      setOpen(false);
-                      setShowAI(true);
-                    }}
+                    onClick={() => setOpen(false)}
+                    disabled={isAnalyzingSubmit}
                   >
                     Cancel
                   </Button>

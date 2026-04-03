@@ -124,7 +124,7 @@ export function useTaskAPI() {
 
   // ========================= CRUD =========================
 
-  const addTask = async (task: Omit<Task, "id" | "createdAt"> & { image?: File | null }) => {
+  const addTask = async (task: Omit<Task, "id" | "createdAt"> & { image?: File | null }, reload = true) => {
     try {
       const taskToSend = { ...task };
 
@@ -179,10 +179,20 @@ export function useTaskAPI() {
         body: formData
       });
 
-      triggerReloadWithLoading();
+      const data = await response.json();
 
+      if (!response.ok) {
+        throw new Error(data?.detail || 'Error adding task');
+      }
+
+      if (reload) {
+        triggerReloadWithLoading();
+      }
+
+      return data;
     } catch (error) {
       console.error("Error adding task:", error);
+      throw error;
     }
   };
 
