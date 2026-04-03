@@ -64,7 +64,7 @@ export function VirtualPet() {
 
   const getNextMilestone = () => {
     const milestones = [100, 300, 700, 1500];
-    return milestones.find((m) => m > progress.totalPoints) || 2000;
+    return milestones.find((m) => m > progressData.totalPoints) || 2000;
   };
 
   const nextMilestone = getNextMilestone();
@@ -128,7 +128,7 @@ export function VirtualPet() {
                     className="h-full w-full rounded-lg object-contain"
                   />
 
-                  {progress.petLevel >= 5 && (
+                  {progressData.petLevel >= 5 && (
                     <motion.div
                       className="absolute -top-2 -right-2"
                       animate={{
@@ -164,7 +164,7 @@ export function VirtualPet() {
                 <div className="mt-3 w-full">
                   <div className="mb-1.5 flex justify-between text-xs">
                     <span className="text-muted-foreground">Next Evolution</span>
-                    <span className="font-medium">{progress.totalPoints} / {nextMilestone}</span>
+                    <span className="font-medium">{progressData.totalPoints} / {nextMilestone}</span>
                   </div>
                   <Progress value={progressToNext} className="h-2" />
                 </div>
@@ -177,7 +177,7 @@ export function VirtualPet() {
                   <Sparkles className="h-4 w-4" />
                   <span className="text-sm font-medium">Points</span>
                 </div>
-                <span className="font-semibold">{progress.totalPoints}</span>
+                <span className="font-semibold">{progressData.totalPoints}</span>
               </div>
 
               <div className="flex items-center justify-between rounded-md bg-secondary p-3">
@@ -185,7 +185,7 @@ export function VirtualPet() {
                   <Flame className="h-4 w-4 text-destructive" />
                   <span className="text-sm font-medium">Streak</span>
                 </div>
-                <span className="font-semibold">{progress.currentStreak} days</span>
+                <span className="font-semibold">{progressData.currentStreak} days</span>
               </div>
 
               <div className="flex items-center justify-between rounded-md bg-secondary p-3">
@@ -193,7 +193,7 @@ export function VirtualPet() {
                   <Trophy className="h-4 w-4" />
                   <span className="text-sm font-medium">Completed</span>
                 </div>
-                <span className="font-semibold">{progress.tasksCompleted}</span>
+                <span className="font-semibold">{progressData.tasksCompleted}</span>
               </div>
             </div>
           </Card>
@@ -221,14 +221,14 @@ export function VirtualPet() {
             />
             
             {/* Streak Badge */}
-            {progress.currentStreak > 0 && (
+            {progressData.currentStreak > 0 && (
               <motion.div
                 className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground border-2 border-background shadow-md"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 500, damping: 15 }}
               >
-                {progress.currentStreak}
+                {progressData.currentStreak}
               </motion.div>
             )}
 
