@@ -33,7 +33,7 @@ interface TaskActionsProps {
 }
 
 export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
-  const { addTask, updateTask, deleteTask, toggleTaskComplete, tasks } = useTaskAPI();
+  const { addTask, updateTask, deleteTask, toggleTaskComplete, tasks, getSchedulingSuggestion } = useTaskAPI();
   const [open, setOpen] = useState(false);
   const [showAI, setShowAI] = useState(true); // AI shown by default
   const [isEditing, setIsEditing] = useState(false);
@@ -49,49 +49,9 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
     dueTime: "",
     image: null as File | null,
     link: "",
-    // Work schedule fields
-    work_days: [] as string[],
-    start_time: "",
-    end_time: "",
-    work_type: "",
   });
 
-  const [conflicts, setConflicts] = useState<Task[]>([]);
 
-  // Conflict detection function
-  const checkConflicts = (workDays: string[], startTime: string, endTime: string) => {
-    if (!workDays.length || !startTime || !endTime) return [];
-
-    const conflictingTasks: Task[] = [];
-    
-    // Get all academic tasks
-    const academicTasks = tasks.filter(t => t.category === 'academic');
-    
-    academicTasks.forEach(academicTask => {
-      const academicDate = new Date(academicTask.dueDate);
-      const academicDay = academicDate.toLocaleDateString('en-US', { weekday: 'long' });
-      
-      if (workDays.includes(academicDay)) {
-        const academicTime = academicDate.toTimeString().slice(0, 5);
-        // Check if times overlap: startA < endB AND endA > startB
-        if (startTime < academicTime && endTime > academicTime) {
-          conflictingTasks.push(academicTask);
-        }
-      }
-    });
-    
-    return conflictingTasks;
-  };
-
-  // Update conflicts when schedule changes
-  useEffect(() => {
-    if (formData.category === 'work') {
-      const newConflicts = checkConflicts(formData.work_days, formData.start_time, formData.end_time);
-      setConflicts(newConflicts);
-    } else {
-      setConflicts([]);
-    }
-  }, [formData.work_days, formData.start_time, formData.end_time, formData.category, tasks]);
 
   // Update form data when task changes (for editing)
   useEffect(() => {
@@ -108,10 +68,6 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
         dueTime: dueTime,
         image: null,
         link: task.link || "",
-        work_days: task.work_days || [],
-        start_time: task.start_time || "",
-        end_time: task.end_time || "",
-        work_type: task.work_type || "",
       });
       setDescription(task.description || "");
     }
@@ -253,13 +209,39 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
           points,
           image: formData.image,
           link: formData.link || undefined,
-          work_days: formData.work_days,
-          start_time: formData.start_time,
-          end_time: formData.end_time,
-          work_type: formData.work_type,
         });
 
         toast.success("Task created successfully");
+        
+        // Get intelligent scheduling suggestion
+        try {
+          const suggestion = await getSchedulingSuggestion({
+            title: formData.title,
+            description: formData.description,
+            category: formData.category,
+            priority: formData.priority,
+            dueDate: dueDateTime,
+          });
+          
+          if (suggestion) {
+            if (suggestion.type === 'conflict') {
+              // Show conflict warning
+              toast.error(
+                `${suggestion.title}\n${suggestion.conflict.task} (${suggestion.conflict.priority})\nConflicts with: ${suggestion.conflict.work_schedule}\n\n${suggestion.suggestion}`,
+                { duration: 8000 }
+              );
+            } else if (suggestion.type === 'suggestion') {
+              // Show scheduling suggestion
+              toast.info(
+                `${suggestion.title}\n${suggestion.suggested_time}\n${suggestion.reason}\n\n${suggestion.tip}`,
+                { duration: 8000 }
+              );
+            }
+          }
+        } catch (err) {
+          console.error("Error getting scheduling suggestion:", err);
+        }
+        
         setOpen(false);
         setShowAI(true);
         setImagePreview(null);
@@ -272,10 +254,6 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
           dueTime: "",
           image: null,
           link: "",
-          work_days: [],
-          start_time: "",
-          end_time: "",
-          work_type: "",
         });
       }
     } catch (error: any) {
@@ -768,106 +746,7 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
                   </div>
                 </div>
 
-                {/* Work Schedule Fields */}
-                {formData.category === "work" && (
-                  <div className="space-y-4 border-t pt-4">
-                    <h3 className="text-lg font-semibold">Work Schedule</h3>
-                    
-                    <div>
-                      <Label>Work Days</Label>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
-                          <label key={day} className="flex items-center gap-2">
-                            <Checkbox
-                              checked={formData.work_days.includes(day)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setFormData({
-                                    ...formData,
-                                    work_days: [...formData.work_days, day]
-                                  });
-                                } else {
-                                  setFormData({
-                                    ...formData,
-                                    work_days: formData.work_days.filter(d => d !== day)
-                                  });
-                                }
-                              }}
-                            />
-                            <span className="text-sm">{day.slice(0, 3)}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="start_time">Start Time</Label>
-                        <Input
-                          id="start_time"
-                          type="time"
-                          value={formData.start_time}
-                          onChange={(e) =>
-                            setFormData({ ...formData, start_time: e.target.value })
-                          }
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="end_time">End Time</Label>
-                        <Input
-                          id="end_time"
-                          type="time"
-                          value={formData.end_time}
-                          onChange={(e) =>
-                            setFormData({ ...formData, end_time: e.target.value })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="work_type">Work Type</Label>
-                      <Select
-                        value={formData.work_type}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, work_type: value })
-                        }
-                      >
-                        <SelectTrigger id="work_type">
-                          <SelectValue placeholder="Select work type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="office">Office</SelectItem>
-                          <SelectItem value="remote">Remote</SelectItem>
-                          <SelectItem value="hybrid">Hybrid</SelectItem>
-                          <SelectItem value="shift">Shift Work</SelectItem>
-                          <SelectItem value="freelance">Freelance</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-
-                {/* Conflict Warning */}
-                {conflicts.length > 0 && (
-                  <div className="border border-red-200 bg-red-50 p-4 rounded-lg">
-                    <h4 className="text-red-800 font-semibold mb-2">⚠️ Schedule Conflict Detected</h4>
-                    <p className="text-red-700 text-sm mb-3">
-                      Your work schedule conflicts with the following academic tasks:
-                    </p>
-                    <div className="space-y-2">
-                      {conflicts.map(conflict => (
-                        <div key={conflict.id} className="text-red-700 text-sm">
-                          • {conflict.title} ({new Date(conflict.dueDate).toLocaleDateString()} at {new Date(conflict.dueDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })})
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-red-700 text-sm mt-3">
-                      Consider adjusting your work schedule to avoid conflicts.
-                    </p>
-                  </div>
-                )}
 
                 <div className="flex gap-2 pt-4">
                   <Button type="submit" className="flex-1">

@@ -290,6 +290,23 @@ export function useTaskAPI() {
     }
   };
 
+  const getSchedulingSuggestion = async (task: any) => {
+    try {
+      const response = await fetch(API_URL + "/tasks/schedule_suggestion/", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(task)
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting scheduling suggestion:", error);
+      return null;
+    }
+  };
+
   return {
     tasks,
     progress,
@@ -304,6 +321,7 @@ export function useTaskAPI() {
     syncData,
     updateSettings,
     fetchNotificationSettings,
-    updateNotificationSettings
+    updateNotificationSettings,
+    getSchedulingSuggestion
   };
 }

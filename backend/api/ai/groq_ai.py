@@ -141,3 +141,181 @@ Ensure the suggestion is practical and fits within reasonable work hours.
             "suggestion": "Unable to generate suggestion",
             "reason": text
         }
+
+
+def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
+    """
+    Generate intelligent task scheduling suggestions considering:
+    - Work schedules as fixed constraints
+    - Task priority (High, Medium, Low)
+    - Optimal time slots around work schedule
+    - Conflict detection
+    """
+    
+    def format_12h(time_str):
+        if not time_str:
+            return ''
+        h, m = time_str.split(':')
+        hour = int(h)
+        suffix = 'AM' if hour < 12 else 'PM'
+        hour12 = hour % 12 or 12
+        return f"{hour12}:{m} {suffix}"
+    
+    def time_to_minutes(time_str):
+        """Convert HH:MM to minutes"""
+        if not time_str:
+            return 0
+        h, m = time_str.split(':')
+        return int(h) * 60 + int(m)
+    
+    def check_overlap(task_time, task_duration, schedule_start, schedule_end):
+        """
+        Check if task overlaps with schedule
+        Condition: startA < endB AND endA > startB
+        """
+        task_start_min = time_to_minutes(task_time)
+        task_end_min = task_start_min + task_duration
+        
+        schedule_start_min = time_to_minutes(schedule_start)
+        schedule_end_min = time_to_minutes(schedule_end)
+        
+        # Handle overnight shifts
+        if schedule_end_min < schedule_start_min:  # overnight
+            # Task overlaps if it's after start OR before end
+            return (task_start_min >= schedule_start_min) or (task_end_min <= schedule_end_min)
+        else:  # same day
+            # Standard overlap check
+            return task_start_min < schedule_end_min and task_end_min > schedule_start_min
+    
+    task_title = task.get('title', 'Task')
+    task_priority = task.get('priority', 'medium').lower()
+    task_due_date = task.get('dueDate', '')
+    task_duration = 120  # Default 2 hours
+    
+    # Validate priority
+    if task_priority not in ['high', 'medium', 'low']:
+        task_priority = 'medium'
+    
+    # Parse due date to get day
+    try:
+        due_date = datetime.fromisoformat(task_due_date.replace('Z', '+00:00'))
+        due_day = due_date.strftime('%A')
+        due_time = due_date.strftime('%H:%M')
+    except ValueError:
+        return {
+            "type": "error",
+            "message": "Unable to parse task due date",
+            "suggestion": "Please set a specific due date and time for this task"
+        }
+    
+    # Check for conflicts with work schedules
+    conflicts = []
+    for schedule in work_schedules:
+        if due_day in schedule.get('work_days', []):
+            schedule_start = schedule.get('start_time', '')
+            schedule_end = schedule.get('end_time', '')
+            
+            if check_overlap(due_time, task_duration, schedule_start, schedule_end):
+                conflicts.append({
+                    'schedule_title': schedule.get('job_title', 'Work Schedule'),
+                    'schedule_start': format_12h(schedule_start),
+                    'schedule_end': format_12h(schedule_end),
+                })
+    
+    # If conflicts exist, generate conflict warning + alternative
+    if conflicts:
+        conflict_info = conflicts[0]
+        
+        # Find alternative time slots
+        alternative_slots = _find_alternative_slots(
+            due_day, conflicts, task_priority
+        )
+        
+        return {
+            "type": "conflict",
+            "title": "⚠ Conflict Detected",
+            "conflict": {
+                "task": task_title,
+                "priority": task_priority,
+                "scheduled_time": format_12h(due_time),
+                "work_schedule": conflict_info['schedule_title'],
+                "work_schedule_time": f"{conflict_info['schedule_start']} – {conflict_info['schedule_end']}"
+            },
+            "suggestion": alternative_slots.get('suggestion', 'Please check your calendar'),
+            "reason": alternative_slots.get('reason', 'Rescheduling based on availability'),
+            "tip": _get_productivity_tip(task_priority)
+        }
+    
+    # No conflict - suggest best time
+    best_slot = _find_best_slot(due_day, conflicts, task_priority, work_schedules)
+    
+    return {
+        "type": "suggestion",
+        "title": "💡 Suggested Schedule",
+        "task": task_title,
+        "priority": task_priority,
+        "suggested_time": best_slot.get('time', format_12h(due_time)),
+        "reason": best_slot.get('reason', 'Optimal time based on your priority and availability'),
+        "tip": _get_productivity_tip(task_priority)
+    }
+
+
+def _find_alternative_slots(day, conflicts, priority):
+    """Find alternative time slots avoiding conflicts"""
+    priority_slot_map = {
+        'high': ('09:00', '11:00', 'Morning slots are best for focused high-priority work'),
+        'medium': ('14:00', '16:00', 'Afternoon slots work well for medium-priority tasks'),
+        'low': ('17:00', '19:00', 'Lower-priority work can fit in late afternoon')
+    }
+    
+    start_time, end_time, reason = priority_slot_map.get(
+        priority, ('14:00', '16:00', 'Based on availability')
+    )
+    
+    def format_12h(time_str):
+        h, m = time_str.split(':')
+        hour = int(h)
+        suffix = 'AM' if hour < 12 else 'PM'
+        hour12 = hour % 12 or 12
+        return f"{hour12}:{m} {suffix}"
+    
+    return {
+        "suggestion": f"Move task to {format_12h(start_time)} – {format_12h(end_time)}",
+        "reason": reason
+    }
+
+
+def _find_best_slot(day, conflicts, priority, work_schedules):
+    """Find optimal time slot for task"""
+    priority_guidance = {
+        'high': {
+            'slot': '09:00 – 11:00',
+            'reason': 'This avoids your work schedule and prioritizes your high-priority task during peak morning focus time'
+        },
+        'medium': {
+            'slot': '14:00 – 16:00',
+            'reason': 'This is an optimal afternoon slot when mental energy is steady and complements your work schedule'
+        },
+        'low': {
+            'slot': '17:00 – 19:00',
+            'reason': 'This flexible time slot works well for lower-priority tasks without conflicting with other commitments'
+        }
+    }
+    
+    slot_info = priority_guidance.get(priority, priority_guidance['medium'])
+    
+    return {
+        "time": slot_info['slot'],
+        "reason": slot_info['reason']
+    }
+
+
+def _get_productivity_tip(priority):
+    """Get work-life balance tip based on priority"""
+    tips = {
+        'high': '💡 Tip: Schedule high-priority tasks early in the day when your focus is sharpest.',
+        'medium': '💡 Tip: Balance your schedule by spacing medium-priority tasks throughout the day.',
+        'low': '💡 Tip: Low-priority tasks can be batched together or scheduled flexibly around your main commitments.'
+    }
+    
+    return tips.get(priority, tips['medium'])

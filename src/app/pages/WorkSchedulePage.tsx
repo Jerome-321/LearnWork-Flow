@@ -179,6 +179,89 @@ export function WorkSchedulePage() {
       </div>
 
       <div className="flex-1 overflow-auto p-4 space-y-4">
+        {/* Overview Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
+              {schedules.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No work schedules created yet</p>
+              ) : (
+                schedules.map((schedule) => {
+                  const conflict = scheduleConflicts.find((item) => item.schedule.id === schedule.id);
+                  return (
+                    <Card key={schedule.id} className="relative">
+                      {conflict?.conflicts.length ? (
+                        <Badge variant="destructive" className="absolute top-3 right-3 text-xs">
+                          Conflict
+                        </Badge>
+                      ) : null}
+                      <CardHeader>
+                        <CardTitle className="text-base">{schedule.job_title?.trim() || "Work Schedule"}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <div className="text-sm text-muted-foreground">
+                          Days: {displayDays(schedule.work_days)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Time: {formatTime12Hour(schedule.start_time)} - {formatTime12Hour(schedule.end_time)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Type: {schedule.work_type}</div>
+                        {schedule.notes && <div className="text-sm">Notes: {schedule.notes}</div>}
+
+                        {conflict?.conflicts.length ? (
+                          <div className="rounded border border-red-200 bg-red-50 p-2 text-red-700 text-xs">
+                            {conflict.conflicts.map((it) => (
+                              <p key={`${schedule.id}-${it.title}`}>{it.message}</p>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        <div className="flex gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditing(schedule);
+                              setWorkDays(schedule.work_days);
+                              setStartTime(schedule.start_time);
+                              setEndTime(schedule.end_time);
+                              setWorkType(schedule.work_type);
+                              setNotes(schedule.notes);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await deleteSchedule(schedule.id);
+                                toast.success("Schedule deleted");
+                              } catch (err: any) {
+                                toast.error(err?.message || "Delete failed");
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Separator />
+
+        {/* Work Schedule Form Section */}
         <Card>
           <CardHeader>
             <CardTitle>{editing ? "Edit Work Schedule" : "Add Work Schedule"}</CardTitle>
@@ -264,76 +347,6 @@ export function WorkSchedulePage() {
             </form>
           </CardContent>
         </Card>
-
-        <Separator />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
-          {schedules.map((schedule) => {
-            const conflict = scheduleConflicts.find((item) => item.schedule.id === schedule.id);
-            return (
-              <Card key={schedule.id} className="relative">
-                {conflict?.conflicts.length ? (
-                  <Badge variant="destructive" className="absolute top-3 right-3 text-xs">
-                    Conflict
-                  </Badge>
-                ) : null}
-                <CardHeader>
-                  <CardTitle>{schedule.job_title?.trim() || "Work Schedule"}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="text-sm text-muted-foreground">
-                    Days: {displayDays(schedule.work_days)}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Time: {formatTime12Hour(schedule.start_time)} - {formatTime12Hour(schedule.end_time)}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Type: {schedule.work_type}</div>
-                  {schedule.notes && <div className="text-sm">Notes: {schedule.notes}</div>}
-
-                  {conflict?.conflicts.length ? (
-                    <div className="rounded border border-red-200 bg-red-50 p-2 text-red-700 text-xs">
-                      {conflict.conflicts.map((it) => (
-                        <p key={`${schedule.id}-${it.title}`}>{it.message}</p>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditing(schedule);
-                        setWorkDays(schedule.work_days);
-                        setStartTime(schedule.start_time);
-                        setEndTime(schedule.end_time);
-                        setWorkType(schedule.work_type);
-                        setNotes(schedule.notes);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          await deleteSchedule(schedule.id);
-                          toast.success("Schedule deleted");
-                        } catch (err: any) {
-                          toast.error(err?.message || "Delete failed");
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
       </div>
     </div>
   );

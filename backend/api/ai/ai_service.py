@@ -1,7 +1,7 @@
 from .ollama_ai import analyze_task_with_ai
 from .rule_scheduler import rule_scheduler
 from .ml_optimizer import optimize_time
-from .groq_ai import groq_schedule, groq_work_schedule_suggestion
+from .groq_ai import groq_schedule, groq_work_schedule_suggestion, groq_task_schedule_suggestion
 from .task_analyzer import TaskAnalyzer
 from datetime import datetime
 

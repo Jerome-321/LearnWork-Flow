@@ -192,6 +192,29 @@ class TaskViewSet(viewsets.ModelViewSet):
             progress.petLevel = max(1, progress.totalPoints // 100 + 1)
             progress.save()
 
+    @action(detail=False, methods=['post'])
+    def schedule_suggestion(self, request):
+        """
+        Get AI-powered scheduling suggestions considering work schedules and priority
+        """
+        task_data = request.data
+        user = request.user
+        
+        # Get user's work schedules
+        work_schedules = list(WorkSchedule.objects.filter(user=user).values(
+            'id', 'job_title', 'work_days', 'start_time', 'end_time', 'work_type'
+        ))
+        
+        # Get all user tasks for context
+        all_tasks = list(Task.objects.filter(user=user).values(
+            'id', 'title', 'dueDate', 'priority', 'category'
+        ))
+        
+        # Generate scheduling suggestion
+        suggestion = groq_task_schedule_suggestion(task_data, work_schedules, all_tasks)
+        
+        return Response(suggestion)
+
 
 class WorkScheduleViewSet(viewsets.ModelViewSet):
     queryset = WorkSchedule.objects.all()
