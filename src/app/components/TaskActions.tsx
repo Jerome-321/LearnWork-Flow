@@ -341,11 +341,30 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
   };
 
   const handleAIModalDecline = async () => {
-    setShowAiModal(false);
-    setAiSuggestion(null);
-    setPendingTaskPayload(null);
-    toast.error("Task creation canceled as requested");
-    resetForm();
+    if (!pendingTaskPayload) {
+      toast.error("No task data available");
+      return;
+    }
+
+    // Create task with original form values (not AI suggestion)
+    const originalPayload = {
+      ...pendingTaskPayload,
+      dueDate: formData.dueDate && formData.dueTime ? `${formData.dueDate}T${formData.dueTime}:00` : pendingTaskPayload.dueDate,
+      priority: formData.priority || pendingTaskPayload.priority,
+      estimatedDuration: formData.estimatedDuration || pendingTaskPayload.estimatedDuration || 60,
+    };
+
+    try {
+      await addTask(originalPayload, true);
+      toast.success("Task created with your original settings");
+      setShowAiModal(false);
+      setAiSuggestion(null);
+      setPendingTaskPayload(null);
+      resetForm();
+    } catch (error) {
+      toast.error("Failed to create task");
+      console.error("Task creation error:", error);
+    }
   };
 
   const handleAIModalAccept = async () => {
@@ -707,13 +726,7 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
 
       <Dialog
         open={showAiModal}
-        onOpenChange={(open) => {
-          if (!open && pendingTaskPayload) {
-            handleAIModalDecline();
-            return;
-          }
-          setShowAiModal(open);
-        }}
+        onOpenChange={setShowAiModal}
       >
         <DialogContent className="max-w-md p-6">
           <DialogHeader className="mb-4">

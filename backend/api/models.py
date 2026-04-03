@@ -29,6 +29,7 @@ class Task(models.Model):
     notified_5h = models.BooleanField(default=False)
     notified_1h = models.BooleanField(default=False)
     notified_5m = models.BooleanField(default=False)
+    notified_overdue = models.BooleanField(default=False)
 
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
