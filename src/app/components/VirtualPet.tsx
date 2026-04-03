@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, type SyntheticEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Trophy, Flame, X } from "lucide-react";
 import { useTaskAPI } from "../hooks/useTaskAPI";
@@ -13,21 +13,19 @@ export function VirtualPet() {
   // Don't show pet if no progress data
   if (!progress) return null;
 
-  const getPetEmoji = () => {
-    switch (progress.petStage) {
-      case "egg":
-        return "🥚";
-      case "baby":
-        return "🐣";
-      case "teen":
-        return "🐥";
-      case "adult":
-        return "🐦";
-      case "master":
-        return "🦅";
-      default:
-        return "🥚";
+  const getPetImage = (level: number) => {
+    // Use known image file names from PET folder
+    if (level === 0) return "/PET/lvl0.png";
+    if (level === 0.1) return "/PET/lvl0.1.png";
+    if (level === 0.11) return "/PET/level0.1.png";
+
+    const rounded = Math.floor(level);
+    if (rounded >= 1 && rounded <= 4) {
+      return `/PET/lvl${rounded}.png`;
     }
+
+    // Fallback to egg
+    return "/PET/lvl0.png";
   };
 
   const getPetName = () => {
@@ -67,6 +65,21 @@ export function VirtualPet() {
   const nextMilestone = getNextMilestone();
   const progressToNext = ((progress.totalPoints % nextMilestone) / nextMilestone) * 100;
 
+  const defaultPetImage = getPetImage(progress.petLevel ?? 0);
+  const [petImage, setPetImage] = useState(defaultPetImage);
+
+  useEffect(() => {
+    setPetImage(getPetImage(progress.petLevel ?? 0));
+  }, [progress.petLevel]);
+
+  const onPetImageError = (event: SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = event.currentTarget;
+    if (target.src.indexOf("/PET/lvl0.png") === -1) {
+      target.src = "/PET/lvl0.png";
+      setPetImage("/PET/lvl0.png");
+    }
+  };
+
   return (
     <AnimatePresence>
       <motion.div
@@ -91,9 +104,10 @@ export function VirtualPet() {
               <div className="flex flex-col items-center">
                 {/* Pet Display */}
                 <motion.div
-                  className="relative"
+                  className="relative h-24 w-24 mb-2"
                   animate={{
-                    y: [0, -10, 0],
+                    y: [0, -8, 0],
+                    scale: [1, 1.02, 1],
                   }}
                   transition={{
                     duration: 2,
@@ -101,11 +115,14 @@ export function VirtualPet() {
                     ease: "easeInOut",
                   }}
                 >
-                  <div className="text-7xl mb-2 filter drop-shadow-lg">
-                    {getPetEmoji()}
-                  </div>
-                  
-                  {/* Sparkle effect for high levels */}
+                  <img
+                    key={progress.petLevel}
+                    src={petImage}
+                    alt={getPetName()}
+                    onError={onPetImageError}
+                    className="h-full w-full rounded-lg object-contain"
+                  />
+
                   {progress.petLevel >= 5 && (
                     <motion.div
                       className="absolute -top-2 -right-2"
@@ -182,8 +199,12 @@ export function VirtualPet() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
-            <motion.span
-              className="text-4xl filter drop-shadow-md"
+            <motion.img
+              key={progress.petLevel}
+              src={petImage}
+              alt={getPetName()}
+              onError={onPetImageError}
+              className="h-8 w-8 object-contain filter drop-shadow-md"
               animate={{
                 rotate: [0, 10, -10, 0],
               }}
@@ -192,9 +213,7 @@ export function VirtualPet() {
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
-            >
-              {getPetEmoji()}
-            </motion.span>
+            />
             
             {/* Streak Badge */}
             {progress.currentStreak > 0 && (
