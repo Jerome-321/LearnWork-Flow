@@ -233,7 +233,7 @@ export function VirtualPet() {
             )}
 
             {/* Sparkle effect for high levels */}
-            {progress.petLevel >= 5 && (
+            {progressData.petLevel >= 5 && (
               <motion.div
                 className="absolute -top-1 -left-1"
                 animate={{
