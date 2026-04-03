@@ -49,12 +49,6 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
       count: getCategoryCount("work"),
     },
     {
-      path: "/work-schedule",
-      icon: Briefcase,
-      label: "Work Schedule",
-      count: getCategoryCount("work"),
-    },
-    {
       path: "/personal",
       icon: User,
       label: "Personal",
@@ -70,6 +64,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
 
   const secondaryItems = [
     { path: "/calendar", icon: Calendar, label: "Calendar" },
+    { path: "/work-schedule", icon: Briefcase, label: "Work Schedule" },
     { path: "/progress", icon: BarChart3, label: "Progress" },
     { path: "/settings", icon: Settings, label: "Settings" },
   ];
