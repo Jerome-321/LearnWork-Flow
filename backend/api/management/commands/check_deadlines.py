@@ -98,7 +98,14 @@ class Command(BaseCommand):
                     setattr(task, window['flag'], True)
                     task.save(update_fields=[window['flag']])
 
-                    # 🔥 SEND EMAIL
+                    # � CREATE NOTIFICATION RECORD
+                    Notification.objects.create(
+                        user=task.user,                        notification_type="task_reminder",                        title=payload['title'],
+                        message=payload['body'],
+                        task=task
+                    )
+
+                    # �🔥 SEND EMAIL
                     send_task_email(
                         task.user.email,
                         task.title,
