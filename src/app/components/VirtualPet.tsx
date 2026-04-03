@@ -10,8 +10,13 @@ export function VirtualPet() {
   const { progress } = useTaskAPI();
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Don't show pet if no progress data
-  if (!progress) return null;
+  const progressData = progress ?? {
+    petStage: "egg",
+    currentStreak: 0,
+    totalPoints: 0,
+    tasksCompleted: 0,
+    petLevel: 0,
+  };
 
   const getPetImage = (level: number) => {
     // Use known image file names from PET folder
@@ -29,7 +34,7 @@ export function VirtualPet() {
   };
 
   const getPetName = () => {
-    switch (progress.petStage) {
+    switch (progressData.petStage) {
       case "egg":
         return "Egg";
       case "baby":
@@ -46,11 +51,11 @@ export function VirtualPet() {
   };
 
   const getPetMessage = () => {
-    if (progress.currentStreak === 0) {
+    if (progressData.currentStreak === 0) {
       return "Complete a task to start your streak!";
-    } else if (progress.currentStreak >= 7) {
+    } else if (progressData.currentStreak >= 7) {
       return "Amazing streak! Keep it up! 🌟";
-    } else if (progress.currentStreak >= 3) {
+    } else if (progressData.currentStreak >= 3) {
       return "Great progress! You're on fire! 🔥";
     } else {
       return "Let's keep growing together! 💪";
@@ -63,14 +68,14 @@ export function VirtualPet() {
   };
 
   const nextMilestone = getNextMilestone();
-  const progressToNext = ((progress.totalPoints % nextMilestone) / nextMilestone) * 100;
+  const progressToNext = ((progressData.totalPoints % nextMilestone) / nextMilestone) * 100;
 
-  const defaultPetImage = getPetImage(progress.petLevel ?? 0);
+  const defaultPetImage = getPetImage(progressData.petLevel ?? 0);
   const [petImage, setPetImage] = useState(defaultPetImage);
 
   useEffect(() => {
-    setPetImage(getPetImage(progress.petLevel ?? 0));
-  }, [progress.petLevel]);
+    setPetImage(getPetImage(progressData.petLevel ?? 0));
+  }, [progressData.petLevel]);
 
   const onPetImageError = (event: SyntheticEvent<HTMLImageElement, Event>) => {
     const target = event.currentTarget;
@@ -116,7 +121,7 @@ export function VirtualPet() {
                   }}
                 >
                   <img
-                    key={progress.petLevel}
+                    key={progressData.petLevel}
                     src={petImage}
                     alt={getPetName()}
                     onError={onPetImageError}
@@ -145,7 +150,7 @@ export function VirtualPet() {
                   {getPetName()}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Level {progress.petLevel}
+                  Level {progressData.petLevel}
                 </p>
 
                 {/* Pet Message */}
@@ -200,7 +205,7 @@ export function VirtualPet() {
             whileTap={{ scale: 0.95 }}
           >
             <motion.img
-              key={progress.petLevel}
+              key={progressData.petLevel}
               src={petImage}
               alt={getPetName()}
               onError={onPetImageError}
