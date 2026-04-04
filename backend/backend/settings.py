@@ -97,6 +97,9 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # Use PostgreSQL in production, SQLite in development
 if os.environ.get('DATABASE_URL'):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"DATABASE_URL found: {os.environ.get('DATABASE_URL')[:50]}...")
     # Railway provides DATABASE_URL - use PostgreSQL
     DATABASES = {
         'default': dj_database_url.config(
@@ -105,7 +108,9 @@ if os.environ.get('DATABASE_URL'):
             conn_health_checks=True,
         )
     }
+    logger.info("Using PostgreSQL database")
 else:
+    logger.info("No DATABASE_URL found, using SQLite")
     # Development: use SQLite
     DATABASES = {
         'default': {
