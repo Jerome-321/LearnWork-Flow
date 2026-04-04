@@ -331,6 +331,7 @@ def register(request):
                 user = existing_user
                 user.username = username  # Update username if changed
                 user.set_password(password)  # Update password if changed
+                user.save()  # IMPORTANT: Save the updated user
         else:
             # Check username uniqueness only for new users
             if CustomUser.objects.filter(username=username).exists():
@@ -346,7 +347,9 @@ def register(request):
                 password=password,
                 is_verified=False
             )
+            user.save()  # Ensure user is saved before creating related objects
 
+        # Create or get UserProgress
         UserProgress.objects.get_or_create(user=user)
 
         otp = generate_otp()
