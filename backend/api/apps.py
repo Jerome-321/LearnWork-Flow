@@ -13,6 +13,7 @@ class ApiConfig(AppConfig):
         try:
             from .task_scheduler import start_scheduler
             start_scheduler()
+            logger.info(" Background task scheduler started")
         except Exception as e:
-            logger.error(f"Failed to start scheduler: {str(e)}")
+            logger.error(f" Failed to start scheduler: {str(e)}")
 
