@@ -101,8 +101,20 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            } if os.environ.get('DATABASE_URL') else {},
         }
     }
+    
+    # Enable FOREIGN_KEYS for SQLite
+    import sqlite3
+    def enable_foreign_keys(sender, connection, **kwargs):
+        cursor = connection.cursor()
+        cursor.execute('PRAGMA foreign_keys = ON;')
+    
+    from django.db.backends.signals import connection_created
+    connection_created.connect(enable_foreign_keys)
 
 
 # Password validation
