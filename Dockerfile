@@ -15,9 +15,6 @@ ENV DJANGO_SETTINGS_MODULE=backend.settings
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
 
-# Collect static files (with no-input to avoid prompts)
-RUN cd backend && python manage.py collectstatic --noinput --clear 2>/dev/null || true
-
 EXPOSE 8000
 
-CMD ["sh", "-c", "cd backend && python manage.py migrate && python -m gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 1 --timeout 60 --access-logfile - --error-logfile -"]
+CMD ["sh", "-c", "cd backend && python manage.py migrate && python manage.py collectstatic --noinput 2>/dev/null || echo 'collectstatic skipped' && python -m gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 1 --timeout 60 --access-logfile - --error-logfile -"]
