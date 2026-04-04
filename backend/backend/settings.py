@@ -28,6 +28,7 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # Custom User Model
 AUTH_USER_MODEL = 'api.CustomUser'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 ALLOWED_HOSTS = [
     "learnwork-flow.onrender.com",
