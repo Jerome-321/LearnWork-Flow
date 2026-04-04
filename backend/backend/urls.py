@@ -33,10 +33,16 @@ router.register(r'work-schedules', WorkScheduleViewSet)
 
 # ✅ Health check (SAFE)
 def health_check(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("Health check called")
     return JsonResponse({"status": "ok"})
 
 # ✅ Home route
 def home(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("Home route called")
     return JsonResponse({
         "status": "ok",
         "message": "LearnWork API is running 🚀"
