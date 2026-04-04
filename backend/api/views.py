@@ -8,6 +8,10 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from django.conf import settings
 from django.utils import timezone
+from django.db import transaction
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .models import Task, UserProgress, Notification, UserNotificationSettings, PushSubscription, WorkSchedule, CustomUser
 from .serializers import TaskSerializer, NotificationSerializer, UserNotificationSettingsSerializer, WorkScheduleSerializer
@@ -292,6 +296,11 @@ def register(request):
     if request.method == 'OPTIONS':
         return Response(status=200)
     
+    # Log to file for debugging
+    with open('register_debug.log', 'a') as f:
+        f.write(f"\n=== REGISTER CALLED ===\n")
+        f.write(f"Request data: {request.data}\n")
+    
     try:
         username = request.data.get("username")
         email = request.data.get("email")
@@ -341,31 +350,63 @@ def register(request):
                 )
             
             # Create new user
-            user = CustomUser.objects.create_user(
-                username=username,
-                email=email,
-                password=password,
-                is_verified=False
-            )
-            user.save()  # Ensure user is saved before creating related objects
+            try:
+                print(f" Creating CustomUser with username={username}, email={email}")
+                user = CustomUser.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                    is_verified=False
+                )
+                print(f" CustomUser created with ID={user.id}")
+                # Ensure user is persisted by reloading from DB
+                user.refresh_from_db()
+                print(f" CustomUser confirmed in DB")
+            except Exception as e:
+                print(f" CustomUser creation failed: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                raise
 
         # Create or get UserProgress
-        UserProgress.objects.get_or_create(user=user)
+        try:
+            print(f" Creating UserProgress for user_id={user.id}")
+            UserProgress.objects.get_or_create(
+                user=user,
+                defaults={
+                    'totalPoints': 0,
+                    'tasksCompleted': 0,
+                    'petLevel': 1,
+                    'petStage': 'egg',
+                    'currentStreak': 0,
+                    'longestStreak': 0,
+                }
+            )
+            print(f" UserProgress created/retrieved")
+        except Exception as e:
+            print(f" UserProgress creation failed: {str(e)}")
+            raise
 
         otp = generate_otp()
 
         # Store OTP directly on user model
-        user.otp = otp
-        user.otp_created_at = timezone.now()
-        user.save()
+        try:
+            print(f" Storing OTP on user_id={user.id}")
+            user.otp = otp
+            user.otp_created_at = timezone.now()
+            user.save()
+            print(f" OTP stored and user saved")
+        except Exception as e:
+            print(f" OTP storage failed: {str(e)}")
+            raise
 
         # Send OTP email
         try:
             from .utils import send_otp_email
             send_otp_email(email, otp)
-            print(f"✅ OTP email sent to {email}")
+            print(f" OTP email sent to {email}")
         except Exception as email_error:
-            print(f"⚠️ Email sending failed: {str(email_error)}")
+            print(f" Email sending failed: {str(email_error)}")
             # Don't fail registration if email fails - user can retry
 
         return Response({
@@ -378,7 +419,7 @@ def register(request):
 
     except Exception as e:
         import traceback
-        print("❌ REGISTER ERROR:", str(e))
+        print(" REGISTER ERROR:", str(e))
         print(traceback.format_exc())
         return Response(
             {"error": str(e)},
