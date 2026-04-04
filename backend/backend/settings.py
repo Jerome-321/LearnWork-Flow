@@ -25,6 +25,9 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
+# Custom User Model
+AUTH_USER_MODEL = 'api.CustomUser'
+
 ALLOWED_HOSTS = [
     "learnwork-flow.onrender.com",
     "learnwork-flow-1.onrender.com",

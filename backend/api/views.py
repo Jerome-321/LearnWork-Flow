@@ -9,7 +9,7 @@ from django.contrib.auth import authenticate
 from django.conf import settings
 from django.utils import timezone
 
-from .models import Task, UserProgress, Notification, UserNotificationSettings, PushSubscription, WorkSchedule
+from .models import Task, UserProgress, Notification, UserNotificationSettings, PushSubscription, WorkSchedule, CustomUser
 from .serializers import TaskSerializer, NotificationSerializer, UserNotificationSettingsSerializer, WorkScheduleSerializer
 
 from rest_framework.decorators import api_view, permission_classes
@@ -318,33 +318,43 @@ def register(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check if user already exists
-        if User.objects.filter(username=username).exists():
-            return Response(
-                {"error": "Username already exists"},
-                status=status.HTTP_400_BAD_REQUEST
+        # Check if user already exists and handle unverified accounts
+        existing_user = CustomUser.objects.filter(email=email).first()
+        if existing_user:
+            if existing_user.is_verified:
+                return Response(
+                    {"error": "Email already registered"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            else:
+                # User exists but not verified - reuse account and resend OTP
+                user = existing_user
+                user.username = username  # Update username if changed
+                user.set_password(password)  # Update password if changed
+        else:
+            # Check username uniqueness only for new users
+            if CustomUser.objects.filter(username=username).exists():
+                return Response(
+                    {"error": "Username already exists"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create new user
+            user = CustomUser.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                is_verified=False
             )
 
-        if User.objects.filter(email=email).exists():
-            return Response(
-                {"error": "Email already registered"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        user = User.objects.create_user(
-            username=username,
-            email=email,
-            password=password
-        )
-
-        UserProgress.objects.create(user=user)
+        UserProgress.objects.get_or_create(user=user)
 
         otp = generate_otp()
 
-        EmailOTP.objects.update_or_create(
-            user=user,
-            defaults={"otp": otp, "is_verified": False}
-        )
+        # Store OTP directly on user model
+        user.otp = otp
+        user.otp_created_at = timezone.now()
+        user.save()
 
         # Send OTP email
         try:
@@ -383,24 +393,115 @@ def verify_otp(request):
     email = request.data.get("email")
     otp_input = request.data.get("otp")
 
+    if not email or not otp_input:
+        return Response(
+            {"error": "Email and OTP are required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
     try:
-        user = User.objects.get(email=email)
-        otp_obj = EmailOTP.objects.get(user=user)
+        user = CustomUser.objects.get(email=email)
 
-        if otp_obj.otp == otp_input:
-            otp_obj.is_verified = True
-            otp_obj.save()
-            return Response({"message": "Verified successfully"}, status=200)
+        # Check if OTP exists
+        if not user.otp:
+            return Response(
+                {"error": "No OTP found. Please request a new one."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        return Response({"error": "Invalid OTP"}, status=400)
+        # Check if OTP is expired
+        if user.is_otp_expired():
+            return Response(
+                {"error": "OTP expired. Please request a new one."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    except User.DoesNotExist:
-        return Response({"error": "User not found"}, status=404)
-    except EmailOTP.DoesNotExist:
-        return Response({"error": "OTP not found"}, status=404)
+        # Verify OTP
+        if user.otp == otp_input:
+            user.is_verified = True
+            user.clear_otp()  # Clear OTP fields
+            return Response(
+                {"message": "Email verified successfully! You can now log in."},
+                status=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                {"error": "Invalid OTP"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    except CustomUser.DoesNotExist:
+        return Response(
+            {"error": "User not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
     except Exception as e:
         print("❌ VERIFY OTP ERROR:", str(e))
-        return Response({"error": str(e)}, status=500)
+        return Response(
+            {"error": "Verification failed"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST', 'OPTIONS'])
+@permission_classes([AllowAny])
+def resend_otp(request):
+    # Handle preflight requests
+    if request.method == 'OPTIONS':
+        return Response(status=200)
+
+    email = request.data.get("email")
+
+    if not email:
+        return Response(
+            {"error": "Email is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        user = CustomUser.objects.get(email=email)
+
+        # Check rate limiting (60 seconds)
+        if not user.can_resend_otp():
+            return Response(
+                {"error": "Please wait 60 seconds before requesting a new OTP"},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
+        # Generate new OTP
+        otp = generate_otp()
+        user.otp = otp
+        user.otp_created_at = timezone.now()
+        user.save()
+
+        # Send OTP email
+        try:
+            from .utils import send_otp_email
+            send_otp_email(email, otp)
+            print(f"✅ OTP resent to {email}")
+            return Response(
+                {"message": "OTP sent successfully. Check your email."},
+                status=status.HTTP_200_OK
+            )
+        except Exception as email_error:
+            print(f"⚠️ Email sending failed: {str(email_error)}")
+            return Response(
+                {"error": "Failed to send email. Please try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    except CustomUser.DoesNotExist:
+        return Response(
+            {"error": "User not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        print("❌ RESEND OTP ERROR:", str(e))
+        return Response(
+            {"error": "Failed to resend OTP"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
 
 # LOGIN
 
@@ -429,8 +530,8 @@ def login(request):
 
         # Get user by email
         try:
-            user_obj = User.objects.get(email=email)
-        except User.DoesNotExist:
+            user_obj = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
             return Response(
                 {"error": "Invalid credentials"},
                 status=401
@@ -445,28 +546,11 @@ def login(request):
                 status=401
             )
 
-        # Check if user has OTP record (new users)
-        otp_obj = EmailOTP.objects.filter(user=user).first()
-
-        # Legacy user handling: Users without OTP record can login directly
-        if otp_obj is None:
-            # Legacy user - allow login without OTP verification
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
-                "user": {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email
-                }
-            }, status=200)
-
-        # New user handling: Check OTP verification status
-        if not otp_obj.is_verified:
+        # Check if user is verified
+        if not user.is_verified:
             return Response(
-                {"error": "Email not verified. Please check your email for the OTP code."},
-                status=403
+                {"error": "Account not verified. Please verify OTP first."},
+                status=status.HTTP_403_FORBIDDEN
             )
 
         # New user with verified OTP - allow login
