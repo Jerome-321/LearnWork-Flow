@@ -162,8 +162,11 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# WhiteNoise compression and caching
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Ensure static root directory exists
+STATIC_ROOT.mkdir(parents=True, exist_ok=True)
+
+# WhiteNoise: Use standard storage (not manifest) to avoid missing manifest errors
+STATICFILES_STORAGE = 'whitenoise.storage.WhiteNoiseStaticFilesStorage'
 
 # Media files (uploaded images)
 MEDIA_URL = '/media/'
