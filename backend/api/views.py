@@ -292,42 +292,33 @@ from rest_framework.permissions import AllowAny
 @api_view(['POST', 'OPTIONS'])
 @permission_classes([AllowAny])
 def register(request):
-    # Handle preflight requests
     if request.method == 'OPTIONS':
         return Response(status=200)
-    
-    # Log to file for debugging
-    with open('register_debug.log', 'a') as f:
-        f.write(f"\n=== REGISTER CALLED ===\n")
-        f.write(f"Request data: {request.data}\n")
     
     try:
         username = request.data.get("username")
         email = request.data.get("email")
         password = request.data.get("password")
 
-        # Basic validation
         if not all([username, email, password]):
             return Response(
                 {"error": "username, email, and password are required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Email validation
         if "@" not in email or "." not in email:
             return Response(
                 {"error": "Please provide a valid email address"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Password validation
         if len(password) < 6:
             return Response(
                 {"error": "Password must be at least 6 characters long"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check if user already exists and handle unverified accounts
+        # Check if user already exists
         existing_user = CustomUser.objects.filter(email=email).first()
         if existing_user:
             if existing_user.is_verified:
@@ -336,78 +327,47 @@ def register(request):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             else:
-                # User exists but not verified - reuse account and resend OTP
                 user = existing_user
-                user.username = username  # Update username if changed
-                user.set_password(password)  # Update password if changed
-                user.save()  # IMPORTANT: Save the updated user
+                user.username = username
+                user.set_password(password)
+                user.save()
         else:
-            # Check username uniqueness only for new users
             if CustomUser.objects.filter(username=username).exists():
                 return Response(
                     {"error": "Username already exists"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Create new user
-            try:
-                print(f" Creating CustomUser with username={username}, email={email}")
-                user = CustomUser.objects.create_user(
-                    username=username,
-                    email=email,
-                    password=password,
-                    is_verified=False
-                )
-                print(f" CustomUser created with ID={user.id}")
-                # Ensure user is persisted by reloading from DB
-                user.refresh_from_db()
-                print(f" CustomUser confirmed in DB")
-            except Exception as e:
-                print(f" CustomUser creation failed: {str(e)}")
-                import traceback
-                traceback.print_exc()
-                raise
-
-        # Create or get UserProgress
-        try:
-            print(f" Creating UserProgress for user_id={user.id}")
-            UserProgress.objects.get_or_create(
-                user=user,
-                defaults={
-                    'totalPoints': 0,
-                    'tasksCompleted': 0,
-                    'petLevel': 1,
-                    'petStage': 'egg',
-                    'currentStreak': 0,
-                    'longestStreak': 0,
-                }
+            user = CustomUser.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                is_verified=False
             )
-            print(f" UserProgress created/retrieved")
-        except Exception as e:
-            print(f" UserProgress creation failed: {str(e)}")
-            raise
+
+        # Create UserProgress with defaults
+        UserProgress.objects.get_or_create(
+            user=user,
+            defaults={
+                'totalPoints': 0,
+                'tasksCompleted': 0,
+                'petLevel': 1,
+                'petStage': 'egg',
+                'currentStreak': 0,
+                'longestStreak': 0,
+            }
+        )
 
         otp = generate_otp()
+        user.otp = otp
+        user.otp_created_at = timezone.now()
+        user.save()
 
-        # Store OTP directly on user model
-        try:
-            print(f" Storing OTP on user_id={user.id}")
-            user.otp = otp
-            user.otp_created_at = timezone.now()
-            user.save()
-            print(f" OTP stored and user saved")
-        except Exception as e:
-            print(f" OTP storage failed: {str(e)}")
-            raise
-
-        # Send OTP email
         try:
             from .utils import send_otp_email
             send_otp_email(email, otp)
-            print(f" OTP email sent to {email}")
         except Exception as email_error:
-            print(f" Email sending failed: {str(email_error)}")
-            # Don't fail registration if email fails - user can retry
+            logger.warning(f"Failed to send OTP email to {email}: {email_error}")
 
         return Response({
             "message": "Account created successfully! Check your email for the OTP code.",
@@ -418,9 +378,7 @@ def register(request):
         }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
-        import traceback
-        print(" REGISTER ERROR:", str(e))
-        print(traceback.format_exc())
+        logger.error(f"Register error: {str(e)}", exc_info=True)
         return Response(
             {"error": str(e)},
             status=500
