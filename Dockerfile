@@ -17,5 +17,5 @@ EXPOSE 8000
 # Test Django startup first
 RUN cd backend && python -c "import django; django.setup(); print('Django setup OK')"
 
-# Minimal startup: just run migrations and gunicorn
-CMD ["sh", "-c", "cd backend && python manage.py migrate && python -m gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 1 --timeout 60 --access-logfile - --error-logfile -"]
+# Use PORT from environment if set, otherwise 8000
+CMD ["sh", "-c", "cd backend && python manage.py migrate && PORT=${PORT:-8000} && python -m gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 60 --access-logfile - --error-logfile -"]
