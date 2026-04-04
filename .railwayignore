@@ -7,3 +7,6 @@ public/
 vite.config.ts
 package.json
 package-lock.json
+index.html
+components.json
+tsconfig.json
