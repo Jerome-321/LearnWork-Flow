@@ -297,24 +297,38 @@ def register(request):
         email = request.data.get("email")
         password = request.data.get("password")
 
-        # Validation
+        # Basic validation
         if not all([username, email, password]):
             return Response(
                 {"error": "username, email, and password are required"},
-                status=400
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Email validation
+        if "@" not in email or "." not in email:
+            return Response(
+                {"error": "Please provide a valid email address"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Password validation
+        if len(password) < 6:
+            return Response(
+                {"error": "Password must be at least 6 characters long"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         # Check if user already exists
         if User.objects.filter(username=username).exists():
             return Response(
                 {"error": "Username already exists"},
-                status=400
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         if User.objects.filter(email=email).exists():
             return Response(
                 {"error": "Email already registered"},
-                status=400
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         user = User.objects.create_user(
@@ -332,7 +346,7 @@ def register(request):
             defaults={"otp": otp, "is_verified": False}
         )
 
-        # � Send OTP email
+        # Send OTP email
         try:
             from .utils import send_otp_email
             send_otp_email(email, otp)
@@ -347,7 +361,7 @@ def register(request):
                 "username": username,
                 "email": email
             }
-        }, status=201)
+        }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
         import traceback
