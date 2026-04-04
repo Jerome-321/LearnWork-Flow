@@ -28,6 +28,7 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = [
     "learnwork-flow.onrender.com",
     "learnwork-flow-1.onrender.com",
+    "learnwork-flow-1-production.up.railway.app",
     "localhost",
     "127.0.0.1",
     "localhost:8000",
@@ -155,6 +156,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "https://learnwork-flow-1.onrender.com",
     "https://learnwork-flow.onrender.com",
+    "https://learnwork-flow-1-production.up.railway.app",
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
