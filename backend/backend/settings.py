@@ -23,6 +23,12 @@ load_dotenv(BASE_DIR / '.env')
 
 # SECURITY
 SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    if os.environ.get('DEBUG', 'False') == 'True':
+        # Development fallback - generate a random key for local testing
+        SECRET_KEY = 'django-insecure-dev-key-do-not-use-in-production-' + str(os.path.getpid())
+    else:
+        raise ValueError("SECRET_KEY environment variable must be set in production")
 
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
