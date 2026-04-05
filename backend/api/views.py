@@ -53,7 +53,7 @@ def admin_logout(request):
     """Custom admin logout that redirects to React app"""
     from django.contrib.auth import logout
     logout(request)
-    return redirect('http://localhost:5176')
+    return redirect('/')
     
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()

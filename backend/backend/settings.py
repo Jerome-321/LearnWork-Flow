@@ -36,17 +36,7 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 AUTH_USER_MODEL = 'api.CustomUser'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-ALLOWED_HOSTS = [
-    "learnwork-flow.onrender.com",
-    "learnwork-flow-1.onrender.com",
-    "learnwork-flow-1-production.up.railway.app",
-    "localhost",
-    "127.0.0.1",
-    "localhost:8000",
-    "127.0.0.1:8000",
-    "https://learnwork-flow-production.up.railway.app",
-]
-
+ALLOWED_HOSTS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [
