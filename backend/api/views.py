@@ -54,6 +54,19 @@ def admin_logout(request):
     from django.contrib.auth import logout
     logout(request)
     return redirect('/')
+
+# API Logout endpoint
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def logout_view(request):
+    """API logout endpoint - clears backend session"""
+    from django.contrib.auth import logout
+    logout(request)
+    return Response(
+        {"message": "Successfully logged out"},
+        status=status.HTTP_200_OK
+    )
     
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()

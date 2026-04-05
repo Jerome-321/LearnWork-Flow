@@ -135,13 +135,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
-    localStorage.removeItem("hasCompletedSchedule");
+    try {
+      // Call backend logout endpoint to clear session
+      await fetch("/api/logout/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+    } catch (error) {
+      console.error("Logout API call failed:", error);
+    } finally {
+      // Always clear frontend auth data
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
+      localStorage.removeItem("hasCompletedSchedule");
+      sessionStorage.clear();
 
-    setSession(null);
-    setUser(null);
-    setHasCompletedSchedule(false);
+      setSession(null);
+      setUser(null);
+      setHasCompletedSchedule(false);
+    }
   };
 
   const refreshSession = async () => {

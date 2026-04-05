@@ -10,10 +10,14 @@ export function AuthGuard({ children }: { children: ReactNode }) {
 
   console.log("AuthGuard state:", { user: user?.email, loading, hasCompletedSchedule });
 
-  // Redirect admin users to Django admin panel
+  // Redirect admin users to Django admin panel (only if accessToken exists)
   useEffect(() => {
     if (user && (user.is_staff || user.is_superuser)) {
-      window.location.href = '/admin/';
+      const accessToken = localStorage.getItem("accessToken");
+      // Only redirect if both user AND token exist
+      if (accessToken) {
+        window.location.href = '/admin/';
+      }
       return;
     }
   }, [user]);

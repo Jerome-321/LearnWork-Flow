@@ -28,7 +28,8 @@ from api.views import (
     unsubscribe_push,
     check_deadline_tasks,
     send_test_notification,
-    admin_logout
+    admin_logout,
+    logout_view
 )
 
 # Custom admin logout view for frontend redirect
@@ -95,6 +96,7 @@ urlpatterns = [
     # API custom endpoints
     path('api/login/', login),
     path('api/register/', register),
+    path('api/logout/', logout_view),
     path('api/verify-otp/', verify_otp),
     path('api/resend-otp/', resend_otp),
     path('api/progress/', progress),
