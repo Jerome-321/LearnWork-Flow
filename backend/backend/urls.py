@@ -4,7 +4,6 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
 from rest_framework.routers import DefaultRouter
 from django.http import JsonResponse
 from django.contrib.auth import logout as auth_logout
@@ -34,29 +33,11 @@ from api.views import (
 
 # Custom admin logout view for frontend redirect
 def admin_site_logout(request):
-    """Logout from admin and redirect to frontend login with localStorage cleared"""
+    """Logout from admin and redirect to frontend"""
     auth_logout(request)
-    # Return HTML that clears localStorage and redirects to frontend
-    return HttpResponse("""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Logging out...</title>
-    </head>
-    <body>
-        <script>
-            // Clear all frontend auth data
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('user');
-            localStorage.removeItem('hasCompletedSchedule');
-            sessionStorage.clear();
-            // Redirect to frontend home (login page)
-            window.location.href = '/';
-        </script>
-        <p>Logging out...</p>
-    </body>
-    </html>
-    """)
+    # Redirect to frontend production URL (no HTML needed, Django session is cleared)
+    return redirect('https://learnwork-flow-production.up.railway.app')
+
 
 # Override admin site logout with custom redirect
 original_logout = admin.site.logout
