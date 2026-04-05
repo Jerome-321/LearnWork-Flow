@@ -98,7 +98,7 @@ urlpatterns = [
 
 # Serve frontend index.html for all non-API routes
 urlpatterns += [
-    re_path(r'^.*$', frontend),
+    re_path(r'^(?!static/|media/|admin/|api/).*$', frontend),
 ]
 
 # Serve static files in development
