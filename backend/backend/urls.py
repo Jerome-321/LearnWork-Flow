@@ -3,9 +3,10 @@ from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from rest_framework.routers import DefaultRouter
 from django.http import JsonResponse
+from django.contrib.auth import logout as auth_logout
 
 from api.views import (
     TaskViewSet,
@@ -28,6 +29,16 @@ from api.views import (
     send_test_notification,
     admin_logout
 )
+
+# Custom admin logout view for frontend redirect
+def admin_site_logout(request):
+    """Logout from admin and redirect to frontend login"""
+    auth_logout(request)
+    return redirect('/')
+
+# Override admin site logout with custom redirect
+original_logout = admin.site.logout
+admin.site.logout = admin_site_logout
 
 # Router
 router = DefaultRouter()
