@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from rest_framework.routers import DefaultRouter
 from django.http import JsonResponse
 
@@ -23,7 +24,8 @@ from api.views import (
     subscribe_push,
     unsubscribe_push,
     check_deadline_tasks,
-    send_test_notification
+    send_test_notification,
+    admin_logout
 )
 
 # Router
@@ -55,6 +57,9 @@ urlpatterns = [
     # Home
     path('', home),
 
+    # Custom admin logout (must come before admin.site.urls)
+    path('admin/logout/', admin_logout),
+
     # Admin
     path('admin/', admin.site.urls),
 
@@ -80,4 +85,8 @@ urlpatterns = [
     path("api/notifications/unsubscribe/", unsubscribe_push),
     path("api/notifications/check-deadlines/", check_deadline_tasks),
     path("api/notifications/send-test/", send_test_notification),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + staticfiles_urlpatterns() + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Serve static files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -1,4 +1,4 @@
-import { Search, Moon, Sun, Menu, LogOut, User, Settings, RefreshCw } from "lucide-react";
+import { Search, Moon, Sun, Menu, LogOut, User, Settings, RefreshCw, Shield } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useTheme } from "next-themes";
@@ -167,6 +167,12 @@ export function TopNav({ onMenuClick, searchQuery, setSearchQuery }: TopNavProps
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
+              {user?.is_staff && (
+                <DropdownMenuItem onClick={() => window.open(`${import.meta.env.VITE_API_URL?.replace('/api', '') || "http://localhost:8000"}/admin/`, '_blank')}>
+                  <Shield className="mr-2 h-4 w-4" />
+                  Admin Panel
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSignOut}>
                 <LogOut className="mr-2 h-4 w-4" />

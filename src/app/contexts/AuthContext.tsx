@@ -5,12 +5,14 @@ interface AuthContextType {
   user: any | null;
   session: any | null;
   loading: boolean;
+  hasCompletedSchedule: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<{ otp?: string }>;
   verifyOTP: (email: string, otp: string) => Promise<void>;
   signOut: () => Promise<void>;
   getAccessToken: () => string | null;
   refreshSession: () => Promise<void>;
+  setHasCompletedSchedule: (completed: boolean) => void;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
@@ -24,15 +26,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<any | null>(null);
   const [session, setSession] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasCompletedSchedule, setHasCompletedSchedule] = useState(false);
   const { setLoading: setGlobalLoading } = useLoading();
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     const storedUser = localStorage.getItem("user");
+    const storedHasCompleted = localStorage.getItem("hasCompletedSchedule");
 
     if (token && storedUser) {
       setSession({ access_token: token });
       setUser(JSON.parse(storedUser));
+      setHasCompletedSchedule(storedHasCompleted === "true");
     }
 
     setLoading(false);
@@ -60,9 +65,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       localStorage.setItem("accessToken", data.access);
       localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("hasCompletedSchedule", data.has_completed_schedule.toString());
 
       setSession({ access_token: data.access });
       setUser(data.user);
+      setHasCompletedSchedule(data.has_completed_schedule);
     } finally {
       setGlobalLoading(false);
     }
@@ -130,9 +137,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
+    localStorage.removeItem("hasCompletedSchedule");
 
     setSession(null);
     setUser(null);
+    setHasCompletedSchedule(false);
   };
 
   const refreshSession = async () => {
@@ -151,12 +160,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     user,
     session,
     loading,
+    hasCompletedSchedule,
     signIn,
     signUp,
     verifyOTP,
     signOut,
     getAccessToken,
     refreshSession,
+    setHasCompletedSchedule,
   };
 
   return (

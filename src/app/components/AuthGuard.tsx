@@ -1,12 +1,31 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { AuthPage } from "../pages/AuthPage";
+import { WorkScheduleModal } from "./WorkScheduleModal";
 
 export function AuthGuard({ children }: { children: ReactNode }) {
   console.log("AuthGuard rendering...");
-  const { user, loading } = useAuth();
+  const { user, loading, hasCompletedSchedule } = useAuth();
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
-  console.log("AuthGuard state:", { user: user?.email, loading });
+  console.log("AuthGuard state:", { user: user?.email, loading, hasCompletedSchedule });
+
+  // Redirect admin users to Django admin panel
+  useEffect(() => {
+    if (user && (user.is_staff || user.is_superuser)) {
+      window.location.href = `${import.meta.env.VITE_API_URL?.replace('/api', '') || "http://localhost:8000"}/admin/`;
+      return;
+    }
+  }, [user]);
+
+  // Show schedule modal for authenticated users who haven't completed their schedule
+  useEffect(() => {
+    if (user && !hasCompletedSchedule && !user.is_staff && !user.is_superuser) {
+      setShowScheduleModal(true);
+    } else {
+      setShowScheduleModal(false);
+    }
+  }, [user, hasCompletedSchedule]);
 
   if (loading) {
     return (
@@ -23,5 +42,15 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     return <AuthPage />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <div className={`transition-all duration-500 ease-in-out ${showScheduleModal ? 'blur-md filter brightness-75' : ''}`}>
+        {children}
+      </div>
+      <WorkScheduleModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+      />
+    </>
+  );
 }

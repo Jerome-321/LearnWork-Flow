@@ -96,9 +96,10 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 # Database
 # Use PostgreSQL in production, SQLite in development
+import logging
+logger = logging.getLogger(__name__)
+
 if os.environ.get('DATABASE_URL'):
-    import logging
-    logger = logging.getLogger(__name__)
     logger.info(f"DATABASE_URL found: {os.environ.get('DATABASE_URL')[:50]}...")
     # Railway provides DATABASE_URL - use PostgreSQL
     DATABASES = {
@@ -166,8 +167,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Ensure static root directory exists
 STATIC_ROOT.mkdir(parents=True, exist_ok=True)
@@ -193,6 +195,9 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+# Admin logout redirect to React app
+LOGOUT_REDIRECT_URL = 'http://localhost:5176'
+
 
 # ========================
 # ✅ CORS CONFIGURATION
@@ -208,6 +213,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
+    "http://localhost:5176",
     "http://localhost:3000",
 ]
 

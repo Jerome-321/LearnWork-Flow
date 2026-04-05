@@ -9,6 +9,7 @@ from django.contrib.auth import authenticate
 from django.conf import settings
 from django.utils import timezone
 from django.db import transaction
+from django.shortcuts import redirect
 import logging
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,13 @@ def create_notification(user, notification_type, title, message, task=None):
         message=message,
         task=task
     )
+
+# Custom admin logout view
+def admin_logout(request):
+    """Custom admin logout that redirects to React app"""
+    from django.contrib.auth import logout
+    logout(request)
+    return redirect('http://localhost:5176')
     
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
@@ -257,7 +265,10 @@ class WorkScheduleViewSet(viewsets.ModelViewSet):
         return WorkSchedule.objects.filter(user=self.request.user).order_by("-created_at")
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        work_schedule = serializer.save(user=self.request.user)
+        # Mark that user has completed their schedule
+        self.request.user.has_completed_schedule = True
+        self.request.user.save()
 
     def perform_update(self, serializer):
         serializer.save()
@@ -563,8 +574,11 @@ def login(request):
             "user": {
                 "id": user.id,
                 "username": user.username,
-                "email": user.email
-            }
+                "email": user.email,
+                "is_staff": user.is_staff,
+                "is_superuser": user.is_superuser
+            },
+            "has_completed_schedule": user.has_completed_schedule
         }, status=200)
 
     except Exception as e:

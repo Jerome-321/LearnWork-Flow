@@ -11,6 +11,7 @@ class CustomUser(AbstractUser):
     is_verified = models.BooleanField(default=False)
     otp = models.CharField(max_length=6, blank=True, null=True)
     otp_created_at = models.DateTimeField(blank=True, null=True)
+    has_completed_schedule = models.BooleanField(default=False)
 
     def is_otp_expired(self):
         """Check if OTP is expired (valid for 5 minutes)"""
@@ -90,7 +91,7 @@ class Task(models.Model):
 
 class WorkSchedule(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    job_title = models.CharField(max_length=255)
+    job_title = models.CharField(max_length=255, blank=True, default='')
     work_days = models.JSONField(default=list)
     start_time = models.TimeField()
     end_time = models.TimeField()
