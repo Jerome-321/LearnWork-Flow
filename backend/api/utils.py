@@ -55,24 +55,43 @@ ycvU8UQRjGZwmJf4ChoziiUUqNhQVEr6WnIFqABQmhMITGQkIIwcKGGAtCQqEUGgp6WjVQWBgt0WiwoC
     """
 
 
-def _send_email_via_resend(to, subject, html_content):
+def _send_email_via_brevo(to, subject, html_content, text_content='This email requires an HTML-capable client.'):
     import os, requests
-    api_key = os.environ.get('RESEND_API_KEY')
+    api_key = os.environ.get('BREVO_API_KEY')
+    sender_email = os.environ.get('BREVO_SENDER_EMAIL') or os.environ.get('EMAIL_USER') or 'no-reply@learnwork-flow.com'
+    sender_name = os.environ.get('BREVO_SENDER_NAME') or 'LearnWork-Flow'
+
     if not api_key:
-        print('❌ RESEND_API_KEY not set')
-        return
-    response = requests.post(
-        'https://api.resend.com/emails',
-        headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
-        json={
-            'from': 'LearnWork-Flow <onboarding@resend.dev>',
-            'to': [to],
-            'subject': subject,
-            'html': html_content
+        raise RuntimeError('BREVO_API_KEY not set')
+
+    payload = {
+        'sender': {
+            'name': sender_name,
+            'email': sender_email,
         },
-        timeout=10
+        'to': [
+            {
+                'email': to,
+            }
+        ],
+        'subject': subject,
+        'htmlContent': html_content,
+        'textContent': text_content,
+    }
+
+    response = requests.post(
+        'https://api.brevo.com/v3/smtp/email',
+        headers={
+            'api-key': api_key,
+            'Content-Type': 'application/json',
+        },
+        json=payload,
+        timeout=10,
     )
-    print(f'[RESEND] Status: {response.status_code}, Body: {response.text}')
+
+    print(f'[BREVO] Status: {response.status_code}, Body: {response.text}')
+    if response.status_code not in (200, 201, 202):
+        raise RuntimeError(f'Brevo send failed: {response.status_code} {response.text}')
 
 
 # OTP EMAIL
@@ -96,6 +115,10 @@ def _send_otp_email(email, otp):
         <p style="margin:0;color:#a1a1aa;font-size:12px;text-align:center;">LearnWork-Flow helps you hit milestones with organized tasks and reminders.</p>
     """
     try:
+        _send_email_via_brevo(email, 'Verify your LearnWork-Flow account', _base_email(content))
+        print(f"✅ OTP email sent to {email} via Brevo")
+    except Exception as e:
+        print(f"❌ Brevo OTP send failed: {e}. Falling back to Django SMTP.")
         send_mail(
             subject='Verify your LearnWork-Flow account',
             message='',  # Plain text version (empty for HTML-only)
@@ -105,9 +128,6 @@ def _send_otp_email(email, otp):
             fail_silently=False,
         )
         print(f"✅ OTP email sent to {email} via Django SMTP")
-    except Exception as e:
-        print(f"❌ Failed to send OTP email to {email}: {str(e)}")
-        raise
 
 
 # TASK REMINDER EMAIL
@@ -138,6 +158,10 @@ def _send_task_email(user_email, task_title, time_left, task_id=None):
     html_message = _base_email(content)
 
     try:
+        _send_email_via_brevo(user_email, subject, html_message)
+        print(f"✅ Task reminder email sent to {user_email} via Brevo")
+    except Exception as e:
+        print(f"⚠️ Brevo task email failed: {e}. Falling back to Django SMTP.")
         send_mail(
             subject=subject,
             message='',
@@ -147,9 +171,6 @@ def _send_task_email(user_email, task_title, time_left, task_id=None):
             fail_silently=False,
         )
         print(f"✅ Task reminder email sent to {user_email} via Django SMTP")
-    except Exception as e:
-        print(f"⚠️ SMTP task email failed: {e}. Falling back to Resend API.")
-        _send_email_via_resend(user_email, subject, html_message)
 
 
 # NOTIFICATION EMAIL
@@ -166,4 +187,18 @@ def _send_notification_email(user_email, title, message):
         <a href="https://learnwork-flow-1.onrender.com" style="display:block;text-align:center;background:#09090b;color:white;text-decoration:none;padding:12px;border-radius:8px;font-weight:bold;font-size:15px;">Open LearnWork-Flow</a>
         <p style="margin:16px 0 0;color:#71717a;font-size:13px;text-align:center;">Stay productive </p>
     """
-    _send_email_via_resend(user_email, title, _base_email(content))
+    try:
+        _send_email_via_brevo(user_email, title, _base_email(content))
+        print(f"✅ Notification email sent to {user_email} via Brevo")
+    except Exception as e:
+        print(f"⚠️ Brevo notification email failed: {e}. Falling back to Django SMTP.")
+        send_mail(
+            subject=title,
+            message='',
+            from_email='LearnWork-Flow <jerome.natividad7704@gmail.com>',
+            recipient_list=[user_email],
+            html_message=_base_email(content),
+            fail_silently=False,
+        )
+        print(f"✅ Notification email sent to {user_email} via Django SMTP")
+
