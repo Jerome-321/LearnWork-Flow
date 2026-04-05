@@ -276,7 +276,7 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
 
       // Show loading while AI analyzes
       const token = getAccessToken();
-      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000/api"}/ai/analyze/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "/api"}/ai/analyze/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

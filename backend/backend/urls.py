@@ -1,8 +1,9 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+from django.shortcuts import render
 from rest_framework.routers import DefaultRouter
 from django.http import JsonResponse
 
@@ -40,22 +41,15 @@ def health_check(request):
     logger.info("Health check called")
     return JsonResponse({"status": "ok"})
 
-# ✅ Home route
-def home(request):
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.info("Home route called")
-    return JsonResponse({
-        "status": "ok",
-        "message": "LearnWork API is running 🚀"
-    })
+# ✅ Frontend SPA fallback route
+def frontend(request, path=None):
+    return render(request, 'index.html')
 
 urlpatterns = [
     # 🔥 Put health check FIRST
     path('healthz', health_check),
 
-    # Home
-    path('', home),
+    # API endpoints
 
     # Custom admin logout (must come before admin.site.urls)
     path('admin/logout/', admin_logout),
@@ -86,6 +80,11 @@ urlpatterns = [
     path("api/notifications/check-deadlines/", check_deadline_tasks),
     path("api/notifications/send-test/", send_test_notification),
 ] + staticfiles_urlpatterns() + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Serve frontend index.html for all non-API routes
+urlpatterns += [
+    re_path(r'^.*$', frontend),
+]
 
 # Serve static files in development
 if settings.DEBUG:

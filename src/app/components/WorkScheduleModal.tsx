@@ -45,7 +45,7 @@ export function WorkScheduleModal({ isOpen, onClose }: WorkScheduleModalProps) {
 
     try {
       const token = getAccessToken();
-      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000/api"}/work-schedules/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "/api"}/work-schedules/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

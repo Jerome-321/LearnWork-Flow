@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from corsheaders.defaults import default_headers
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -45,13 +44,12 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost:8000",
     "127.0.0.1:8000",
-    "https://learnwork-flow-production.up.railway.app/",
+    "https://learnwork-flow-production.up.railway.app",
 ]
 
 # Application definition
 
 INSTALLED_APPS = [
-    'corsheaders',
     'rest_framework',
     'api',
     'django.contrib.admin',
@@ -63,7 +61,6 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
     'backend.middleware.TestMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -80,7 +77,7 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -182,7 +179,6 @@ STATICFILES_STORAGE = 'whitenoise.storage.WhiteNoiseStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# CORS settings moved to bottom of file
 from datetime import timedelta
 
 REST_FRAMEWORK = {
@@ -196,68 +192,8 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# Admin logout redirect to React app
-LOGOUT_REDIRECT_URL = 'https://learnwork-flow-production.up.railway.app'
-
-# api/middleware.py
-class ForceCORSMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        response = self.get_response(request)
-        response["Access-Control-Allow-Origin"] = "*"
-        response["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PUT, DELETE"
-        response["Access-Control-Allow-Headers"] = "*"
-        return response
-# ========================
-# ✅ CORS CONFIGURATION
-# ========================
-
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
-
-CORS_ALLOWED_ORIGINS = [
-    "https://learnwork-flow-1.onrender.com",
-    "https://learnwork-flow.onrender.com",
-    "https://learnwork-flow-1-production.up.railway.app",
-    "http://localhost:5177",
-    "https://learnwork-flow-production.up.railway.app/",
-]
-print("CORS_ALLOWED_ORIGINS set to:", CORS_ALLOWED_ORIGINS)
-CORS_ALLOW_ALL_HEADERS = True
-CORS_ALLOW_METHODS = [
-    "DELETE",
-    "GET",
-    "OPTIONS",
-    "PATCH",
-    "POST",
-    "PUT",
-    "HEAD",
-]
-
-CORS_ALLOW_HEADERS = [
-    "accept",
-    "accept-encoding",
-    "authorization",
-    "content-type",
-    "dnt",
-    "origin",
-    "user-agent",
-    "x-csrftoken",
-    "x-requested-with",
-]
-
-# Explicitly allow credentials
-CORS_EXPOSE_HEADERS = [
-    "Content-Type",
-    "Authorization",
-]
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5177",
-]
-
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+LOGOUT_REDIRECT_URL = '/'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 465
 EMAIL_USE_TLS = False
@@ -268,8 +204,6 @@ EMAIL_TIMEOUT = 10
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
 VAPID_EMAIL = os.environ.get("VAPID_ADMIN_EMAIL")
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 EMAIL_HOST_USER = os.getenv("EMAIL_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_PASS")
 DEFAULT_FROM_EMAIL = "LearnWork-Flow <jerome.natividad7704@gmail.com>"
-print(" CORS SETTINGS LOADED")

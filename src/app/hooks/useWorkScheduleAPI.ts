@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { WorkSchedule } from "../types/task";
 import { useAuth } from "../contexts/AuthContext";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export function useWorkScheduleAPI() {
   const { getAccessToken } = useAuth();

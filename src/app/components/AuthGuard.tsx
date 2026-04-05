@@ -13,7 +13,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   // Redirect admin users to Django admin panel
   useEffect(() => {
     if (user && (user.is_staff || user.is_superuser)) {
-      window.location.href = `${import.meta.env.VITE_API_URL?.replace('/api', '') || "http://localhost:8000"}/admin/`;
+      window.location.href = '/admin/';
       return;
     }
   }, [user]);

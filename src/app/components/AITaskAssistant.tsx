@@ -164,7 +164,7 @@ export function AITaskAssistant({
       let scheduleData: any = null;
       try {
         const scheduleResponse = await fetch(
-          `${import.meta.env.VITE_API_URL || "http://localhost:8000/api"}/tasks/schedule_suggestion/`,
+          `${import.meta.env.VITE_API_URL || "/api"}/tasks/schedule_suggestion/`,
           {
             method: "POST",
             headers: {
@@ -236,7 +236,7 @@ export function AITaskAssistant({
       let aiResult: any = null;
       try {
         const aiResponse = await fetch(
-          `${import.meta.env.VITE_API_URL || "http://localhost:8000/api"}/ai/analyze/`,
+          `${import.meta.env.VITE_API_URL || "/api"}/ai/analyze/`,
           {
             method: "POST",
             headers: {

@@ -3,7 +3,7 @@ import { flushSync } from "react-dom";
 import { Task, UserProgress, UserSettings } from "../types/task";
 import { useAuth } from "../contexts/AuthContext";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 interface NotificationSettings {
   notifications_enabled: boolean;

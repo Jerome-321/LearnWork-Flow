@@ -168,7 +168,7 @@ export function TopNav({ onMenuClick, searchQuery, setSearchQuery }: TopNavProps
                 Settings
               </DropdownMenuItem>
               {user?.is_staff && (
-                <DropdownMenuItem onClick={() => window.open(`${import.meta.env.VITE_API_URL?.replace('/api', '') || "http://localhost:8000"}/admin/`, '_blank')}>
+                <DropdownMenuItem onClick={() => window.open('/admin/', '_blank')}>
                   <Shield className="mr-2 h-4 w-4" />
                   Admin Panel
                 </DropdownMenuItem>
