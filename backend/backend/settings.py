@@ -45,6 +45,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost:8000",
     "127.0.0.1:8000",
+    "https://learnwork-flow-production.up.railway.app/",
 ]
 
 # Application definition
@@ -196,7 +197,7 @@ SIMPLE_JWT = {
 }
 
 # Admin logout redirect to React app
-LOGOUT_REDIRECT_URL = 'http://localhost:5177'
+LOGOUT_REDIRECT_URL = 'https://learnwork-flow-production.up.railway.app'
 
 # api/middleware.py
 class ForceCORSMiddleware:
@@ -221,6 +222,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://learnwork-flow.onrender.com",
     "https://learnwork-flow-1-production.up.railway.app",
     "http://localhost:5177",
+    "https://learnwork-flow-production.up.railway.app/",
 ]
 print("CORS_ALLOWED_ORIGINS set to:", CORS_ALLOWED_ORIGINS)
 CORS_ALLOW_ALL_HEADERS = True
