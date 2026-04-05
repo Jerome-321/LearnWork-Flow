@@ -63,9 +63,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'backend.middleware.TestMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    # Temporarily disabling WhiteNoise to debug 502 error
-    # 'whitenoise.middleware.WhiteNoiseMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -196,27 +196,34 @@ SIMPLE_JWT = {
 }
 
 # Admin logout redirect to React app
-LOGOUT_REDIRECT_URL = 'http://localhost:5176'
+LOGOUT_REDIRECT_URL = 'http://localhost:5177'
 
+# api/middleware.py
+class ForceCORSMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
 
+    def __call__(self, request):
+        response = self.get_response(request)
+        response["Access-Control-Allow-Origin"] = "*"
+        response["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PUT, DELETE"
+        response["Access-Control-Allow-Headers"] = "*"
+        return response
 # ========================
 # ✅ CORS CONFIGURATION
 # ========================
 
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
     "https://learnwork-flow-1.onrender.com",
     "https://learnwork-flow.onrender.com",
     "https://learnwork-flow-1-production.up.railway.app",
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:5175",
-    "http://localhost:5176",
-    "http://localhost:3000",
+    "http://localhost:5177",
 ]
-
+print("CORS_ALLOWED_ORIGINS set to:", CORS_ALLOWED_ORIGINS)
+CORS_ALLOW_ALL_HEADERS = True
 CORS_ALLOW_METHODS = [
     "DELETE",
     "GET",
@@ -244,6 +251,9 @@ CORS_EXPOSE_HEADERS = [
     "Content-Type",
     "Authorization",
 ]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5177",
+]
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
@@ -260,3 +270,4 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 EMAIL_HOST_USER = os.getenv("EMAIL_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_PASS")
 DEFAULT_FROM_EMAIL = "LearnWork-Flow <jerome.natividad7704@gmail.com>"
+print(" CORS SETTINGS LOADED")

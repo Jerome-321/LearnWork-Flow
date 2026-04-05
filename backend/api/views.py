@@ -29,6 +29,8 @@ from datetime import datetime
 
 from rest_framework.permissions import AllowAny
 
+from django.views.decorators.csrf import csrf_exempt
+
 def format_time_12h(time_str):
     try:
         t = datetime.strptime(time_str, "%H:%M")
@@ -517,7 +519,7 @@ def resend_otp(request):
 
 
 # LOGIN
-
+@csrf_exempt
 @api_view(['POST', 'OPTIONS'])
 @permission_classes([AllowAny])
 def login(request):
@@ -528,7 +530,11 @@ def login(request):
     """
     # Handle preflight requests
     if request.method == 'OPTIONS':
-        return Response(status=200)
+        response = Response(status=200)
+        response["Access-Control-Allow-Origin"] = "http://localhost:5177"
+        response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        return response
 
     try:
         email = request.data.get("username")
