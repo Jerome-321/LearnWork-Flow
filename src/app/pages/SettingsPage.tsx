@@ -3,6 +3,7 @@ import { useTaskAPI } from "../hooks/useTaskAPI";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useAuth } from "../contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import { API_URL } from "../lib/api";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
@@ -41,8 +42,6 @@ export function SettingsPage() {
   const { settings, updateSettings, notificationSettings, updateNotificationSettings, fetchNotificationSettings } = useTaskAPI();
   const { isSubscribed, isLoading, permission, isSupported, subscriptionChecked, subscribe, unsubscribe, requestNotificationPermission, checkSubscriptionStatus } = usePushNotifications();
   const { signOut, user, getAccessToken } = useAuth();
-
-  const API_URL = import.meta.env.VITE_API_URL || "/api";
 
   const sendTestNotification = async () => {
     try {

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { UserProgress } from "../types/task";
 import { useAuth } from "./AuthContext";
 import { useLoading } from "./LoadingContext";
+import { API_URL } from "../lib/api";
 
 interface ProgressContextType {
   progress: UserProgress | null;
@@ -15,8 +16,6 @@ const ProgressContext = createContext<ProgressContextType | undefined>(undefined
 interface ProgressProviderProps {
   children: ReactNode;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export function ProgressProvider({ children }: ProgressProviderProps) {
   const { getAccessToken, user } = useAuth();

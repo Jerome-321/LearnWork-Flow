@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../lib/api';
 
 interface WorkScheduleModalProps {
   isOpen: boolean;
@@ -45,7 +46,7 @@ export function WorkScheduleModal({ isOpen, onClose }: WorkScheduleModalProps) {
 
     try {
       const token = getAccessToken();
-      const response = await fetch(`${import.meta.env.VITE_API_URL || "/api"}/work-schedules/`, {
+      const response = await fetch(`${API_URL}/work-schedules/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -74,8 +75,8 @@ export function WorkScheduleModal({ isOpen, onClose }: WorkScheduleModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl transform transition-all duration-300 ease-out">
+    <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white/95 backdrop-blur-md rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl transform transition-all duration-300 ease-out border border-white/70">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-900">Set Up Your Work Schedule</h2>
         </div>

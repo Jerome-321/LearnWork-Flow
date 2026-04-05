@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../lib/api';
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -20,8 +21,6 @@ export function usePushNotifications() {
   const [vapidPublicKey, setVapidPublicKey] = useState('');
   const [isSupported, setIsSupported] = useState(false);
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
-
-  const API_URL = import.meta.env.VITE_API_URL || "/api";
 
   useEffect(() => {
     const supported = 'serviceWorker' in navigator && 'PushManager' in window;

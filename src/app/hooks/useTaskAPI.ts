@@ -2,8 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { flushSync } from "react-dom";
 import { Task, UserProgress, UserSettings } from "../types/task";
 import { useAuth } from "../contexts/AuthContext";
-
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+import { API_URL } from "../lib/api";
 
 interface NotificationSettings {
   notifications_enabled: boolean;

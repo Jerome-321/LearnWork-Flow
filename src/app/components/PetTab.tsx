@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Input } from "./ui/input";
 import { useAuth } from "../contexts/AuthContext";
 import { Loader2, Trophy, Flame, CheckCircle, Search } from "lucide-react";
+import { API_URL } from "../lib/api";
 
 interface LeaderboardUser {
   id: number;
@@ -12,8 +13,6 @@ interface LeaderboardUser {
   currentStreak: number;
   tasksCompleted: number;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export function PetTab() {
   const { getAccessToken } = useAuth();

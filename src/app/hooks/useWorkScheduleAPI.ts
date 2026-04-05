@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { WorkSchedule } from "../types/task";
 import { useAuth } from "../contexts/AuthContext";
-
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+import { API_URL } from "../lib/api";
 
 export function useWorkScheduleAPI() {
   const { getAccessToken } = useAuth();

@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { AITaskAssistant } from "./AITaskAssistant";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { useAuth } from "../contexts/AuthContext";
+import { API_URL } from "../lib/api";
 
 interface TaskActionsProps {
   task?: Task;
@@ -276,7 +277,7 @@ export function TaskActions({ task, onClose }: TaskActionsProps = {}) {
 
       // Show loading while AI analyzes
       const token = getAccessToken();
-      const response = await fetch(`${import.meta.env.VITE_API_URL || "/api"}/ai/analyze/`, {
+      const response = await fetch(`${API_URL}/ai/analyze/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

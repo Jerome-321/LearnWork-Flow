@@ -20,6 +20,7 @@ import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { TaskCategory, TaskPriority } from "../types/task";
 import { useAuth } from "../contexts/AuthContext";
+import { API_URL } from "../lib/api";
 
 interface AISuggestion {
   suggested_time: string;
@@ -164,7 +165,7 @@ export function AITaskAssistant({
       let scheduleData: any = null;
       try {
         const scheduleResponse = await fetch(
-          `${import.meta.env.VITE_API_URL || "/api"}/tasks/schedule_suggestion/`,
+          `${API_URL}/tasks/schedule_suggestion/`,
           {
             method: "POST",
             headers: {
@@ -236,7 +237,7 @@ export function AITaskAssistant({
       let aiResult: any = null;
       try {
         const aiResponse = await fetch(
-          `${import.meta.env.VITE_API_URL || "/api"}/ai/analyze/`,
+          `${API_URL}/ai/analyze/`,
           {
             method: "POST",
             headers: {

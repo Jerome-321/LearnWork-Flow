@@ -1,3 +1,23 @@
+const getRuntimeApiUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL?.toString().trim();
+  const defaultUrl = "/api";
+
+  if (typeof window === "undefined") {
+    return envUrl || defaultUrl;
+  }
+
+  const isBrowserLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  const envUrlIsLocalhost = !!envUrl?.match(/localhost|127\.0\.0\.1/);
+
+  if (!isBrowserLocalhost && envUrlIsLocalhost) {
+    return defaultUrl;
+  }
+
+  return envUrl || defaultUrl;
+};
+
+export const API_URL = getRuntimeApiUrl();
+
 export const apiRequest = async (
   url: string,
   options: RequestInit = {},
