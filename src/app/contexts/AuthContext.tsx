@@ -156,6 +156,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(null);
       setUser(null);
       setHasCompletedSchedule(false);
+
+      // Redirect to production URL
+      window.location.href = "https://learnwork-flow-production.up.railway.app";
     }
   };
 
