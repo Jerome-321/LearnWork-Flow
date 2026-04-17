@@ -194,3 +194,16 @@ class EmailOTP(models.Model):
 
     def __str__(self):
         return f"{self.user.username} OTP"
+
+
+class Streak(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="streak")
+    current_streak = models.IntegerField(default=0)
+    longest_streak = models.IntegerField(default=0)
+    last_completed_date = models.DateField(null=True, blank=True)
+    total_days_active = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} Streak: {self.current_streak} days"

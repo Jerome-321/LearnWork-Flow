@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Task, Notification, UserNotificationSettings, WorkSchedule
+from .models import Task, Notification, UserNotificationSettings, WorkSchedule, Streak
 
 class TaskSerializer(serializers.ModelSerializer):
 
@@ -36,3 +36,10 @@ class UserNotificationSettingsSerializer(serializers.ModelSerializer):
             "ai_suggestions",
             "daily_reminders"
         ]
+
+
+class StreakSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Streak
+        fields = ["id", "current_streak", "longest_streak", "last_completed_date", "total_days_active", "created_at", "updated_at"]
+        read_only_fields = ["user", "created_at", "updated_at"]

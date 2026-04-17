@@ -558,6 +558,21 @@ export function useTaskAPI() {
         setPendingSyncCount(updatedPending.length);
       }
 
+      // Update streak if task was completed (not uncompleted)
+      if (updates.completed) {
+        try {
+          await fetch(API_URL + "/streak/update/", {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify({})
+          });
+          console.log('Streak updated successfully');
+        } catch (streakError) {
+          console.error('Failed to update streak:', streakError);
+          // Don't throw - streak update failure shouldn't block task completion
+        }
+      }
+
       setPendingToggleIds(prev => {
         const next = new Set(prev);
         next.delete(id);

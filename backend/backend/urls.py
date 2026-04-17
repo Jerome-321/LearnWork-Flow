@@ -27,7 +27,9 @@ from api.views import (
     unsubscribe_push,
     check_deadline_tasks,
     send_test_notification,
-    admin_logout
+    admin_logout,
+    get_streak,
+    update_streak
 )
 
 # Router
@@ -81,6 +83,10 @@ urlpatterns = [
     path("api/notifications/unsubscribe/", unsubscribe_push),
     path("api/notifications/check-deadlines/", check_deadline_tasks),
     path("api/notifications/send-test/", send_test_notification),
+
+    # Streak
+    path("api/streak/", get_streak),
+    path("api/streak/update/", update_streak),
 ] + staticfiles_urlpatterns() + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Serve frontend index.html for all non-API routes

@@ -208,18 +208,12 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# Sendinblue (Brevo) API Configuration
+EMAIL_BACKEND = 'backend.sendinblue_backend.SendinblueEmailBackend'
+SENDINBLUE_API_KEY = os.getenv('SENDINBLUE_API_KEY', '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')
+DEFAULT_FROM_EMAIL = 'LearnWork-Flow <jeeromee7@gmail.com>'
 LOGOUT_REDIRECT_URL = '/'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 465
-EMAIL_USE_TLS = False
-EMAIL_USE_SSL = True
-EMAIL_TIMEOUT = 10
-# VAPID key used for Web Push (must match the key used by your push service)
-# NOTE: In a production system, store these securely (environment vars, secret manager)
+# VAPID key used for Web Push
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
 VAPID_EMAIL = os.environ.get("VAPID_ADMIN_EMAIL")
-EMAIL_HOST_USER = os.getenv("EMAIL_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_PASS")
-DEFAULT_FROM_EMAIL = "LearnWork-Flow <jerome.natividad7704@gmail.com>"

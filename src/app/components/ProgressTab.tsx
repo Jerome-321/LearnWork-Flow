@@ -2,6 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { useProgress } from "../contexts/ProgressContext";
 import { useTaskAPI } from "../hooks/useTaskAPI";
+import { useStreakAPI } from "../hooks/useStreakAPI";
+import { useState, useEffect } from "react";
+import StreakModal from "./StreakModal";
 import {
   BarChart,
   Bar,
@@ -41,6 +44,12 @@ const CustomTooltip = ({ active, payload }: any) => {
 export function ProgressTab() {
   const { tasks } = useTaskAPI();
   const { progress, loading, refreshProgress } = useProgress();
+  const { streak, fetchStreak } = useStreakAPI();
+  const [showStreakModal, setShowStreakModal] = useState(false);
+
+  useEffect(() => {
+    fetchStreak();
+  }, []);
 
   if (!progress) {
     return (
@@ -139,7 +148,10 @@ export function ProgressTab() {
         </Card>
 
         {/* Current Streak */}
-        <Card className="border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+        <Card 
+          className="border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          onClick={() => setShowStreakModal(true)}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
               <Flame className="h-4 w-4" />
@@ -148,7 +160,7 @@ export function ProgressTab() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              {progress.currentStreak ?? 0}
+              {streak?.current_streak ?? progress.currentStreak ?? 0}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               days
@@ -157,7 +169,10 @@ export function ProgressTab() {
         </Card>
 
         {/* Longest Streak */}
-        <Card className="border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+        <Card 
+          className="border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          onClick={() => setShowStreakModal(true)}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
               <Target className="h-4 w-4" />
@@ -166,7 +181,7 @@ export function ProgressTab() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              {progress.longestStreak ?? 0}
+              {streak?.longest_streak ?? progress.longestStreak ?? 0}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               days
@@ -174,6 +189,15 @@ export function ProgressTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Streak Modal */}
+      <StreakModal
+        isOpen={showStreakModal}
+        onClose={() => setShowStreakModal(false)}
+        currentStreak={streak?.current_streak ?? progress.currentStreak ?? 0}
+        longestStreak={streak?.longest_streak ?? progress.longestStreak ?? 0}
+        totalDaysActive={streak?.total_days_active ?? 0}
+      />
 
       {/* Overall Completion */}
       <Card className="border-gray-200 dark:border-gray-700 shadow-sm">

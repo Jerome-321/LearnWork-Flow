@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Task, UserProgress, CustomUser
+from .models import Task, UserProgress, CustomUser, Streak
 
 
 @admin.register(CustomUser)
@@ -22,3 +22,10 @@ class TaskAdmin(admin.ModelAdmin):
 @admin.register(UserProgress)
 class UserProgressAdmin(admin.ModelAdmin):
     list_display = ("user", "totalPoints", "tasksCompleted", "petLevel", "petStage")
+
+
+@admin.register(Streak)
+class StreakAdmin(admin.ModelAdmin):
+    list_display = ("user", "current_streak", "longest_streak", "last_completed_date", "total_days_active")
+    search_fields = ("user__username",)
+    ordering = ("-current_streak",)

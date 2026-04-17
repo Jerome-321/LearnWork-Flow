@@ -14,8 +14,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .models import Task, UserProgress, Notification, UserNotificationSettings, PushSubscription, WorkSchedule, CustomUser
-from .serializers import TaskSerializer, NotificationSerializer, UserNotificationSettingsSerializer, WorkScheduleSerializer
+from .models import Task, UserProgress, Notification, UserNotificationSettings, PushSubscription, WorkSchedule, CustomUser, Streak
+from .serializers import TaskSerializer, NotificationSerializer, UserNotificationSettingsSerializer, WorkScheduleSerializer, StreakSerializer
 
 from rest_framework.decorators import api_view, permission_classes
 from .ai.ai_service import generate_schedule, generate_work_schedule_suggestion, groq_task_schedule_suggestion
@@ -1180,4 +1180,43 @@ def check_deadline_tasks(request):
             "success": False,
             "error": str(e)
         }, status=500)
+
+
+# STREAK API
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_streak(request):
+    """Get user's streak data"""
+    streak, created = Streak.objects.get_or_create(user=request.user)
+    serializer = StreakSerializer(streak)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_streak(request):
+    """Update user's streak when they complete a task"""
+    from datetime import date, timedelta
+    
+    streak, created = Streak.objects.get_or_create(user=request.user)
+    today = date.today()
+    
+    # If last completed was yesterday, increment streak
+    if streak.last_completed_date == today - timedelta(days=1):
+        streak.current_streak += 1
+        if streak.current_streak > streak.longest_streak:
+            streak.longest_streak = streak.current_streak
+    # If last completed was today, don't change streak
+    elif streak.last_completed_date == today:
+        pass
+    # If last completed was before yesterday, reset streak to 1
+    else:
+        streak.current_streak = 1
+    
+    streak.last_completed_date = today
+    streak.total_days_active += 1
+    streak.save()
+    
+    serializer = StreakSerializer(streak)
+    return Response(serializer.data)
 
