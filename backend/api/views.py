@@ -626,6 +626,11 @@ def login(request):
             )
 
         # New user with verified OTP - allow login
+        # Auto-fix: if user has schedule records but flag is False, correct it
+        if not user.has_completed_schedule and WorkSchedule.objects.filter(user=user).exists():
+            user.has_completed_schedule = True
+            user.save(update_fields=['has_completed_schedule'])
+
         refresh = RefreshToken.for_user(user)
         return Response({
             "access": str(refresh.access_token),
