@@ -210,7 +210,7 @@ SIMPLE_JWT = {
 
 # Sendinblue (Brevo) API Configuration
 EMAIL_BACKEND = 'backend.sendinblue_backend.SendinblueEmailBackend'
-SENDINBLUE_API_KEY = os.getenv('SENDINBLUE_API_KEY', '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')
+SENDINBLUE_API_KEY = os.getenv('SENDINBLUE_API_KEY')
 DEFAULT_FROM_EMAIL = 'LearnWork-Flow <jeeromee7@gmail.com>'
 LOGOUT_REDIRECT_URL = '/'
 # VAPID key used for Web Push
