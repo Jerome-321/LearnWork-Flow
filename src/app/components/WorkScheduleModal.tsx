@@ -84,6 +84,7 @@ export function WorkScheduleModal({ isOpen, onClose }: WorkScheduleModalProps) {
         <div className="p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-900">Set Up Your Work Schedule</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">&times;</button>
         </div>
 
         <p className="text-sm text-gray-600 mb-4">
