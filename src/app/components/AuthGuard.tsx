@@ -1,14 +1,12 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { AuthPage } from "../pages/AuthPage";
 import { WorkScheduleModal } from "./WorkScheduleModal";
 
 export function AuthGuard({ children }: { children: ReactNode }) {
-  console.log("AuthGuard rendering...");
   const { user, loading, hasCompletedSchedule, scheduleChecked } = useAuth();
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
-  console.log("AuthGuard state:", { user: user?.email, loading, hasCompletedSchedule });
+  const showScheduleModal = !!(user && scheduleChecked && !hasCompletedSchedule && !user.is_staff && !user.is_superuser);
 
   // Redirect admin users to Django admin panel
   useEffect(() => {
@@ -17,15 +15,6 @@ export function AuthGuard({ children }: { children: ReactNode }) {
       return;
     }
   }, [user]);
-
-  // Show schedule modal only after schedule status is confirmed from server/localStorage
-  useEffect(() => {
-    if (user && scheduleChecked && !hasCompletedSchedule && !user.is_staff && !user.is_superuser) {
-      setShowScheduleModal(true);
-    } else {
-      setShowScheduleModal(false);
-    }
-  }, [user, hasCompletedSchedule, scheduleChecked]);
 
   if (loading) {
     return (
@@ -49,7 +38,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
       </div>
       <WorkScheduleModal
         isOpen={showScheduleModal}
-        onClose={() => setShowScheduleModal(false)}
+        onClose={() => {}}
       />
     </>
   );
