@@ -34,6 +34,13 @@ export function WorkScheduleModal({ isOpen, onClose }: WorkScheduleModalProps) {
     { value: 'sunday', label: 'Sunday' }
   ];
 
+  const handleClose = () => {
+    // Mark as completed even if user skips
+    setHasCompletedSchedule(true);
+    localStorage.setItem('hasCompletedSchedule', 'true');
+    onClose();
+  };
+
   const handleDayChange = (day: string, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
@@ -66,7 +73,7 @@ export function WorkScheduleModal({ isOpen, onClose }: WorkScheduleModalProps) {
       await fetchSchedules();
 
       toast.success('Work schedule saved successfully!');
-      onClose();
+      handleClose();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An error occurred';
       setError(errorMsg);
@@ -84,7 +91,7 @@ export function WorkScheduleModal({ isOpen, onClose }: WorkScheduleModalProps) {
         <div className="p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-900">Set Up Your Work Schedule</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">&times;</button>
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">&times;</button>
         </div>
 
         <p className="text-sm text-gray-600 mb-4">
