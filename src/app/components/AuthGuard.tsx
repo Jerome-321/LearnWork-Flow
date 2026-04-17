@@ -4,9 +4,14 @@ import { AuthPage } from "../pages/AuthPage";
 import { WorkScheduleModal } from "./WorkScheduleModal";
 
 export function AuthGuard({ children }: { children: ReactNode }) {
-  const { user, loading, hasCompletedSchedule, scheduleChecked } = useAuth();
+  const { user, loading, hasCompletedSchedule, scheduleChecked, setHasCompletedSchedule } = useAuth();
 
   const showScheduleModal = !!(user && scheduleChecked && !hasCompletedSchedule && !user.is_staff && !user.is_superuser);
+
+  const handleCloseModal = () => {
+    setHasCompletedSchedule(true);
+    localStorage.setItem("hasCompletedSchedule", "true");
+  };
 
   // Redirect admin users to Django admin panel
   useEffect(() => {
@@ -38,7 +43,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
       </div>
       <WorkScheduleModal
         isOpen={showScheduleModal}
-        onClose={() => {}}
+        onClose={handleCloseModal}
       />
     </>
   );
