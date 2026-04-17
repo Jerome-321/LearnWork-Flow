@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LearnWorkFlow</string>
+    <string name="title_activity_main">LearnWorkFlow</string>
+    <string name="package_name">com.jerome.learnworkflow</string>
+    <string name="custom_url_scheme">com.jerome.learnworkflow</string>
+</resources>

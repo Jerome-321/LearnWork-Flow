@@ -1,0 +1,12 @@
+dist/
+node_modules/
+src/
+public/
+*.tsx
+*.ts
+vite.config.ts
+package.json
+package-lock.json
+index.html
+components.json
+tsconfig.json

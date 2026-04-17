@@ -1,0 +1,23 @@
+{
+  "appId": "com.jerome.learnworkflow",
+  "appName": "LearnWorkFlow",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#FFFFFF",
+      "overlaysWebView": false
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#000000",
+      "sound": "beep.wav"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+node_modules
+*.md
+db.sqlite3
+.env
+dist/
+android/gradle-home/
+.gradle/
