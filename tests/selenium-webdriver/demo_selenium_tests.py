@@ -91,7 +91,7 @@ class SeleniumTestDemo:
         self.log_step("Set due date: 2024-12-25 10:00 AM")
         self.log_step("Click 'Save' button")
         self.log_step("Wait for AI modal to appear")
-        self.log_step("Verify AI modal shows: '📝 Exam detected'")
+        self.log_step("Verify AI modal shows: 'Exam detected'")
         self.log_step("Verify AI suggests marking as fixed event")
         
         print("\n[PASS] TEST PASSED: AI detected exam and showed appropriate modal")
