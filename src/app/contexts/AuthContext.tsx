@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useLoading } from "./LoadingContext";
 import { PushNotificationService } from "../utils/pushNotifications";
+import { AndroidSyncService } from "../utils/androidSyncService";
 import { getApiUrl } from "../lib/apiUrl";
 
 interface AuthContextType {
@@ -44,6 +45,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // DISABLED: Initialize push notifications when user is authenticated
       // PushNotificationService.initialize(() => token);
+      
+      // Initialize Android background sync
+      AndroidSyncService.initialize(() => localStorage.getItem("accessToken"));
     }
 
     setLoading(false);
@@ -84,6 +88,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // DISABLED: Initialize push notifications after successful login
       // PushNotificationService.initialize(() => data.access);
+      
+      // Initialize Android background sync
+      AndroidSyncService.initialize(() => localStorage.getItem("accessToken"));
     } catch (error: any) {
       console.error(" Sign in error:", error);
       throw error;
