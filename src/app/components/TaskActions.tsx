@@ -60,6 +60,13 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
     link: "",
   });
 
+  const cleanReason = (text: string) => {
+    return text
+      .replace(/[\u{1F300}-\u{1FFFF}]/gu, "")
+      .replace(/[\u2600-\u27BF]/g, "")
+      .trim();
+  };
+
   const formatTime12Hour = (timeString: string) => {
     if (!timeString) return "";
     const [hourStr, minStr] = timeString.split(":");
@@ -489,7 +496,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
                 {aiSuggestion.reason && (
                   <div>
                     <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Details</div>
-                    <div className="text-sm text-gray-700">{aiSuggestion.reason}</div>
+                    <div className="text-sm text-gray-700">{cleanReason(aiSuggestion.reason)}</div>
                   </div>
                 )}
               </div>
@@ -739,7 +746,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
               {aiSuggestion.reason && (
                 <div>
                   <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Details</div>
-                  <div className="text-sm text-gray-700">{aiSuggestion.reason}</div>
+                  <div className="text-sm text-gray-700">{cleanReason(aiSuggestion.reason)}</div>
                 </div>
               )}
             </div>

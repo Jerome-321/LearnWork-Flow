@@ -403,7 +403,7 @@ export function AITaskAssistant({
                 <Sparkles className="h-5 w-5 text-white dark:text-black animate-pulse" />
                 <div>
                   <h3 className="font-semibold text-sm text-white dark:text-black">
-                    AI Schedule Assistant
+                    Schedule Assistant
                   </h3>
                   {isAnalyzing && (
                     <p className="text-[10px] text-white/70 dark:text-black/70">
@@ -412,7 +412,7 @@ export function AITaskAssistant({
                   )}
                   {error && (
                     <p className="text-[10px] text-yellow-200 dark:text-yellow-300">
-                      ⚡ {error}
+                      {error}
                     </p>
                   )}
                   {!isAnalyzing && !error && suggestion && (
@@ -467,7 +467,7 @@ export function AITaskAssistant({
                   <div className="space-y-2">
                     {clarifyingQuestions.map((question, index) => (
                       <div key={index} className="text-xs text-slate-700 dark:text-slate-300">
-                        💡 {question}
+                        {question}
                       </div>
                     ))}
                   </div>
@@ -498,7 +498,7 @@ export function AITaskAssistant({
               <>
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
                   <p className="font-semibold text-sm text-red-700 dark:text-red-300">
-                    ⚠ Conflict Detected
+                    Conflict Detected
                   </p>
                   <p className="text-xs text-slate-700 dark:text-slate-300">
                     Task: {conflictWarning.taskTitle}
@@ -598,7 +598,7 @@ export function AITaskAssistant({
                 {/* Productivity tip */}
                 {suggestion.productivity_score && (
                   <div className="text-xs text-muted-foreground text-center pt-2 border-t">
-                    ✨ Productivity Score: {Math.round(suggestion.productivity_score * 100)}%
+                    Productivity Score: {Math.round(suggestion.productivity_score * 100)}%
                   </div>
                 )}
               </>
