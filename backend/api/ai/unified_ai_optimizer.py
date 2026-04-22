@@ -11,6 +11,7 @@ from .csp_solver import SchedulingCSP
 from .greedy_scheduler import GreedyScheduler
 from .genetic_scheduler import GeneticScheduler
 from .ml_predictor import ProductivityPredictor
+from .fixed_event_handler import FixedEventHandler
 
 
 class UnifiedAIOptimizer:
@@ -34,11 +35,13 @@ class UnifiedAIOptimizer:
             mutation_rate=0.05    # Lower mutation for stability
         )
         self.ml_predictor = ProductivityPredictor()
+        self.fixed_event_handler = FixedEventHandler()
         
         # Performance tracking
         self.optimization_history = []
         self.constraint_violations = 0
         self.fitness_score = 0.0
+        self.balance_report = None
         
     def optimize_schedule(self, tasks: List[Dict], fixed_events: List[Dict], 
                          work_schedules: List[Dict]) -> Dict:
@@ -57,7 +60,15 @@ class UnifiedAIOptimizer:
         """
         
         # Phase 1: CSP Constraint Validation
-        print("[Phase 1] Validating constraints...")
+        print("[Phase 1] Validating constraints and fixed events...")
+        
+        # Validate fixed events don't conflict with each other
+        fixed_validation = self.fixed_event_handler.validate_fixed_events(tasks, fixed_events)
+        if not fixed_validation['valid']:
+            print(f"[WARNING] Fixed event conflicts detected: {len(fixed_validation['conflicts'])}")
+            for conflict in fixed_validation['conflicts']:
+                print(f"  - {conflict['event1']} vs {conflict['event2']} on {conflict['day']}")
+        
         csp_solution = self.csp_solver.solve(tasks, fixed_events, work_schedules)
         
         if not csp_solution:
@@ -93,8 +104,14 @@ class UnifiedAIOptimizer:
         )
         
         # Phase 6: Final Refinement
-        print("[Phase 6] Final refinement...")
+        print("[Phase 6] Final refinement with fixed event handling...")
         optimized_solution = self._final_refinement(best_solution, tasks, fixed_events, work_schedules)
+        
+        # Generate balance report
+        print("[Phase 7] Generating work-life balance report...")
+        self.balance_report = self.fixed_event_handler.generate_balance_report(
+            optimized_solution, tasks, fixed_events, work_schedules
+        )
         
         # Calculate final metrics
         final_quality = self._calculate_final_quality(optimized_solution, tasks, fixed_events, work_schedules)
@@ -107,6 +124,10 @@ class UnifiedAIOptimizer:
         print(f"Final Quality Score: {final_quality:.1f}/100")
         print(f"Constraint Violations: {self.constraint_violations}")
         print(f"Tasks Scheduled: {len(optimized_solution)}/{len(tasks)}")
+        print(f"Fixed Events Preserved: {len(fixed_events)}")
+        if self.balance_report:
+            balance = self.balance_report['balance_assessment']
+            print(f"Work-Life Balance: {balance}")
         print(f"{'='*60}\n")
         
         return optimized_solution
@@ -530,13 +551,23 @@ class UnifiedAIOptimizer:
     
     def get_performance_report(self) -> Dict:
         """Get detailed performance report"""
-        return {
+        report = {
             'fitness_score': round(self.fitness_score, 1),
             'constraint_violations': self.constraint_violations,
             'optimization_quality': 'Perfect' if self.fitness_score >= 100 else
                                    'Excellent' if self.fitness_score >= 95 else
                                    'Very Good' if self.fitness_score >= 90 else
                                    'Good' if self.fitness_score >= 80 else 'Fair',
-            'algorithms_used': ['Groq AI', 'CSP Solver', 'Greedy Algorithm', 'Genetic Algorithm', 'ML Predictor'],
+            'algorithms_used': ['Groq AI', 'CSP Solver', 'Greedy Algorithm', 'Genetic Algorithm', 'ML Predictor', 'Fixed Event Handler'],
             'target_achieved': self.fitness_score >= 100 and self.constraint_violations == 0
         }
+        
+        # Add balance report if available
+        if self.balance_report:
+            report['balance_report'] = {
+                'assessment': self.balance_report['balance_assessment'],
+                'weekly_totals': self.balance_report['weekly_totals'],
+                'recommendations': self.balance_report['recommendations']
+            }
+        
+        return report
