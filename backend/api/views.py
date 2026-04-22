@@ -164,6 +164,26 @@ class TaskViewSet(viewsets.ModelViewSet):
 
             progress.petLevel = progress.totalPoints // 100 + 1
 
+            # Update streak automatically
+            from datetime import date, timedelta
+            streak, _ = Streak.objects.get_or_create(user=self.request.user)
+            today = date.today()
+            
+            if streak.last_completed_date == today - timedelta(days=1):
+                streak.current_streak += 1
+                if streak.current_streak > streak.longest_streak:
+                    streak.longest_streak = streak.current_streak
+            elif streak.last_completed_date != today:
+                streak.current_streak = 1
+            
+            streak.last_completed_date = today
+            streak.total_days_active += 1
+            streak.save()
+            
+            # Sync streak with UserProgress
+            progress.currentStreak = streak.current_streak
+            progress.longestStreak = streak.longest_streak
+
             progress.save()
             
             # ✅ NEW: Create notification for task completion
@@ -1217,6 +1237,12 @@ def update_streak(request):
     streak.last_completed_date = today
     streak.total_days_active += 1
     streak.save()
+    
+    # Sync with UserProgress for leaderboard accuracy
+    progress, _ = UserProgress.objects.get_or_create(user=request.user)
+    progress.currentStreak = streak.current_streak
+    progress.longestStreak = streak.longest_streak
+    progress.save(update_fields=['currentStreak', 'longestStreak'])
     
     serializer = StreakSerializer(streak)
     return Response(serializer.data)
