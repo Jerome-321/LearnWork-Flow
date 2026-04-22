@@ -14,17 +14,21 @@ import com.getcapacitor.BridgeActivity;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends BridgeActivity {
-    private static Bridge staticBridge;
+    private static MainActivity instance;
     
-    public static Bridge getBridge() {
-        return staticBridge;
+    public static MainActivity getInstance() {
+        return instance;
+    }
+    
+    public Bridge getBridgeInstance() {
+        return this.bridge;
     }
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         try {
             super.onCreate(savedInstanceState);
-            staticBridge = this.bridge;
+            instance = this;
             
             // Don't let content go under status bar
             WindowCompat.setDecorFitsSystemWindows(getWindow(), true);

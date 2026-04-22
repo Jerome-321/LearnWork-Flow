@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 
 const API_URL = 'https://learnwork-flow.onrender.com';
 
@@ -30,13 +29,18 @@ export const useStreakAPI = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_URL}/api/streak/`, {
+      const response = await fetch(`${API_URL}/api/streak/`, {
         headers: getAuthHeaders(),
       });
-      setStreak(response.data);
-      return response.data;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch streak data');
+      }
+      const data = await response.json();
+      setStreak(data);
+      return data;
     } catch (err: any) {
-      const errorMsg = err.response?.data?.error || 'Failed to fetch streak data';
+      const errorMsg = err.message || 'Failed to fetch streak data';
       setError(errorMsg);
       console.error('Error fetching streak:', err);
       return null;
@@ -49,17 +53,20 @@ export const useStreakAPI = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post(
-        `${API_URL}/api/streak/update/`,
-        {},
-        {
-          headers: getAuthHeaders(),
-        }
-      );
-      setStreak(response.data);
-      return response.data;
+      const response = await fetch(`${API_URL}/api/streak/update/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({}),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update streak');
+      }
+      const data = await response.json();
+      setStreak(data);
+      return data;
     } catch (err: any) {
-      const errorMsg = err.response?.data?.error || 'Failed to update streak';
+      const errorMsg = err.message || 'Failed to update streak';
       setError(errorMsg);
       console.error('Error updating streak:', err);
       return null;

@@ -21,15 +21,21 @@ public class SyncWorker extends Worker {
         
         try {
             // Trigger sync via JavaScript bridge
-            Bridge bridge = MainActivity.getBridge();
-            if (bridge != null) {
-                bridge.getActivity().runOnUiThread(() -> {
-                    bridge.eval("window.dispatchEvent(new CustomEvent('android-background-sync'))", null);
-                });
-                Log.d(TAG, "Sync event dispatched");
-                return Result.success();
+            MainActivity mainActivity = MainActivity.getInstance();
+            if (mainActivity != null) {
+                Bridge bridge = mainActivity.getBridgeInstance();
+                if (bridge != null) {
+                    mainActivity.runOnUiThread(() -> {
+                        bridge.eval("window.dispatchEvent(new CustomEvent('android-background-sync'))", null);
+                    });
+                    Log.d(TAG, "Sync event dispatched");
+                    return Result.success();
+                } else {
+                    Log.w(TAG, "Bridge not available, will retry");
+                    return Result.retry();
+                }
             } else {
-                Log.w(TAG, "Bridge not available, will retry");
+                Log.w(TAG, "MainActivity not available, will retry");
                 return Result.retry();
             }
         } catch (Exception e) {
