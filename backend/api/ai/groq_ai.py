@@ -146,9 +146,10 @@ Ensure the suggestion is practical and fits within reasonable work hours.
 def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
     """
     Generate intelligent task scheduling suggestions with explicit analysis steps:
-    1. Check task vs existing tasks for conflicts
-    2. Check task vs work schedules for conflicts
-    3. Suggest best available time
+    1. Analyze task title and description for context (exam, meeting, birthday, etc.)
+    2. Check task vs existing tasks for conflicts
+    3. Check task vs work schedules for conflicts
+    4. Suggest best available time
     """
     
     def format_12h(time_str):
@@ -181,10 +182,58 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
         else:  # same day
             return task_start_min < schedule_end_min and task_end_min > schedule_start_min
     
+    def analyze_task_context(title, description):
+        """Analyze task title and description for important context"""
+        title_lower = title.lower()
+        desc_lower = (description or '').lower()
+        combined = f"{title_lower} {desc_lower}"
+        
+        context = {
+            'is_exam': any(word in combined for word in ['exam', 'test', 'quiz', 'midterm', 'final']),
+            'is_meeting': any(word in combined for word in ['meeting', 'appointment', 'interview', 'consultation']),
+            'is_birthday': any(word in combined for word in ['birthday', 'bday', 'celebration', 'party']),
+            'is_deadline': any(word in combined for word in ['deadline', 'due', 'submission', 'submit']),
+            'is_presentation': any(word in combined for word in ['presentation', 'present', 'demo', 'pitch']),
+            'is_study': any(word in combined for word in ['study', 'review', 'practice', 'prepare', 'read']),
+            'is_project': any(word in combined for word in ['project', 'assignment', 'homework', 'essay']),
+            'is_workout': any(word in combined for word in ['workout', 'exercise', 'gym', 'fitness']),
+            'is_social': any(word in combined for word in ['hangout', 'dinner', 'lunch', 'coffee', 'date']),
+        }
+        
+        # Determine if this should be auto-marked as fixed
+        should_be_fixed = context['is_exam'] or context['is_meeting'] or context['is_birthday'] or context['is_presentation']
+        
+        # Generate context-aware message
+        if context['is_exam']:
+            return {'should_be_fixed': should_be_fixed, 'message': '📝 Exam detected - This is a critical fixed-time event'}
+        elif context['is_meeting']:
+            return {'should_be_fixed': should_be_fixed, 'message': '🤝 Meeting/Appointment detected - Fixed time commitment'}
+        elif context['is_birthday']:
+            return {'should_be_fixed': should_be_fixed, 'message': '🎂 Birthday/Celebration detected - Fixed event'}
+        elif context['is_presentation']:
+            return {'should_be_fixed': should_be_fixed, 'message': '🎤 Presentation detected - Fixed time event'}
+        elif context['is_deadline']:
+            return {'should_be_fixed': False, 'message': '⏰ Deadline detected - Plan ahead to avoid last-minute stress'}
+        elif context['is_study']:
+            return {'should_be_fixed': False, 'message': '📚 Study session - Flexible timing recommended'}
+        elif context['is_project']:
+            return {'should_be_fixed': False, 'message': '💼 Project work - Break into smaller sessions if needed'}
+        elif context['is_workout']:
+            return {'should_be_fixed': False, 'message': '💪 Workout - Morning or evening slots work best'}
+        elif context['is_social']:
+            return {'should_be_fixed': False, 'message': '👥 Social event - Consider your energy levels'}
+        
+        return {'should_be_fixed': False, 'message': ''}
+    
     task_title = task.get('title', 'Task')
+    task_description = task.get('description', '')
     task_priority = task.get('priority', 'medium').lower()
     task_due_date = task.get('dueDate', '')
     task_duration = 120  # Default 2 hours
+    
+    # ===== STEP 0: Analyze task context from title and description =====
+    task_context = analyze_task_context(task_title, task_description)
+    context_message = task_context.get('message', '')
     
     if task_priority not in ['high', 'medium', 'low']:
         task_priority = 'medium'
@@ -265,7 +314,8 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
     # If conflict with FIXED event - must reschedule the new task
     if fixed_event_conflicts:
         fixed_event = fixed_event_conflicts[0]
-        analysis = f"Analysis: Your '{task_title}' conflicts with FIXED EVENT '{fixed_event['title']}' at {format_12h(fixed_event['time'])}. This event cannot be moved."
+        context_prefix = f"{context_message} " if context_message else ""
+        analysis = f"{context_prefix}⚠️ Schedule Conflict: Your '{task_title}' conflicts with FIXED EVENT '{fixed_event['title']}' at {format_12h(fixed_event['time'])}. This event cannot be moved."
         
         # Build work schedule summary for context
         work_schedule_summary = []
@@ -289,16 +339,19 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
             "priority": task_priority,
             "scheduled_time": format_12h(due_time),
             "suggested_time": alternative_time.get('suggested_time', '14:00'),
-            "reason": analysis + f" Rescheduling to {format_12h(alternative_time.get('suggested_time', '14:00'))} to avoid fixed event.",
+            "reason": analysis + f" Rescheduling to {format_12h(alternative_time.get('suggested_time', '14:00'))} to avoid fixed event." + (f" {context_message}" if context_message and not context_message in analysis else ""),
             "estimated_duration": "1–2 hours",
             "work_schedules": work_schedule_summary,
-            "tip": "⚠️ Fixed events (birthdays, appointments) cannot be moved. Other tasks must work around them."
+            "tip": "⚠️ Fixed events (exams, meetings, birthdays, appointments) cannot be moved. Other tasks must work around them.",
+            "context_detected": context_message,
+            "should_mark_fixed": task_context.get('should_be_fixed', False)
         }
     
     # If task vs task conflict found (non-fixed)
     if task_conflicts:
         conflict_task = task_conflicts[0]
-        analysis = f" Schedule Conflict: Your '{task_title}' ({task_priority} priority) overlaps with '{conflict_task['title']}' ({conflict_task['priority']} priority) at {format_12h(conflict_task['time'])}."
+        context_prefix = f"{context_message} " if context_message else ""
+        analysis = f"{context_prefix}⚠️ Schedule Conflict: Your '{task_title}' ({task_priority} priority) overlaps with '{conflict_task['title']}' ({conflict_task['priority']} priority) at {format_12h(conflict_task['time'])}."
         
         # Build work schedule summary for context
         work_schedule_summary = []
@@ -349,7 +402,8 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
     # If task vs work schedule conflict found
     if work_schedule_conflicts:
         conflict_info = work_schedule_conflicts[0]
-        analysis = f"Analysis: Your '{task_title}' conflicts with '{conflict_info['schedule_title']}' ({conflict_info['schedule_start']} – {conflict_info['schedule_end']})."
+        context_prefix = f"{context_message} " if context_message else ""
+        analysis = f"{context_prefix}⚠️ Work Schedule Conflict: Your '{task_title}' conflicts with '{conflict_info['schedule_title']}' ({conflict_info['schedule_start']} – {conflict_info['schedule_end']})."
         
         # Build work schedule summary (show all for context)
         work_schedule_summary = []
@@ -396,7 +450,8 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
         if len(same_day_tasks) > 3:
             task_list += f" and {len(same_day_tasks)-3} more"
         
-        analysis = f"📅 Schedule Awareness: You have {len(same_day_tasks)} other task(s) on {due_day}: {task_list}. While there's no direct time conflict, consider spacing your tasks throughout the day for better productivity."
+        context_prefix = f"{context_message} " if context_message else ""
+        analysis = f"{context_prefix}📅 Schedule Awareness: You have {len(same_day_tasks)} other task(s) on {due_day}: {task_list}. While there's no direct time conflict, consider spacing your tasks throughout the day for better productivity."
         
         return {
             "type": "awareness",
@@ -426,7 +481,8 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
                 'end_time': format_12h(schedule.get('end_time', '')),
             })
     
-    analysis = " Clear Schedule: No conflicts detected. Your schedule looks good for this task!"
+    context_prefix = f"{context_message} " if context_message else ""
+    analysis = f"{context_prefix}✅ Clear Schedule: No conflicts detected. Your schedule looks good for this task!"
 
     return {
         "type": "suggestion",
