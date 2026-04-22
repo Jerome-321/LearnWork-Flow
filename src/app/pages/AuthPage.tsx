@@ -240,12 +240,6 @@ export function AuthPage() {
                     <CardTitle>Welcome Back</CardTitle>
                     <CardDescription>
                       Sign in to your account to continue
-                      <br />
-                      Demo Account:
-                      <br />
-                      Email: demo@taskly.com
-                      <br />
-                      Password: demo123
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
