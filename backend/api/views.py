@@ -744,7 +744,7 @@ def ai_analyze_task(request):
     for schedule in work_schedules:
         schedules_data.append({
             "id": schedule.id,
-            "job_title": schedule.job_title,
+            "job_title": schedule.job_title or "Work Schedule",
             "start_time": schedule.start_time.strftime("%H:%M") if schedule.start_time else "09:00",
             "end_time": schedule.end_time.strftime("%H:%M") if schedule.end_time else "17:00",
             "work_days": schedule.work_days or []
