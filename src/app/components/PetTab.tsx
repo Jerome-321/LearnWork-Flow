@@ -4,7 +4,9 @@ import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Input } from "./ui/input";
 import { useAuth } from "../contexts/AuthContext";
 import { getApiUrl } from "../lib/apiUrl";
+import { useStreakAPI } from "../hooks/useStreakAPI";
 import { Loader2, Trophy, Flame, CheckCircle, Search } from "lucide-react";
+import StreakModal from "./StreakModal";
 
 interface LeaderboardUser {
   id: number;
@@ -18,10 +20,12 @@ const API_URL = getApiUrl();
 
 export function PetTab() {
   const { getAccessToken } = useAuth();
+  const { streak, fetchStreak } = useStreakAPI();
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showStreakModal, setShowStreakModal] = useState(false);
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
@@ -52,6 +56,7 @@ export function PetTab() {
 
   useEffect(() => {
     fetchLeaderboard();
+    fetchStreak();
   }, [fetchLeaderboard]);
 
   const getInitials = (username: string) => {
@@ -101,6 +106,78 @@ export function PetTab() {
 
   return (
     <div className="space-y-6 p-6">
+      {/* Streak Stats */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card 
+          className="border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          onClick={() => setShowStreakModal(true)}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
+              <Flame className="h-4 w-4" />
+              Current Streak
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
+              {streak?.current_streak ?? 0}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              days
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          onClick={() => setShowStreakModal(true)}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
+              <Trophy className="h-4 w-4" />
+              Longest Streak
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
+              {streak?.longest_streak ?? 0}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              days
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          onClick={() => setShowStreakModal(true)}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Total Days Active
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
+              {streak?.total_days_active ?? 0}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              days
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Streak Modal */}
+      <StreakModal
+        isOpen={showStreakModal}
+        onClose={() => setShowStreakModal(false)}
+        currentStreak={streak?.current_streak ?? 0}
+        longestStreak={streak?.longest_streak ?? 0}
+        totalDaysActive={streak?.total_days_active ?? 0}
+      />
+
       <div className="space-y-4">
         <div className="flex flex-col gap-1">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
