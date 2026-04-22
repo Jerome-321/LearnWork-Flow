@@ -1,0 +1,355 @@
+{
+  "id": "ai-workschedule-tests",
+  "version": "2.0",
+  "name": "LearnWorkFlow - AI & Work Schedule Tests",
+  "url": "https://learnwork-flow-1.onrender.com",
+  "tests": [
+    {
+      "id": "test-create-work-schedule",
+      "name": "Create Work Schedule",
+      "commands": [
+        {
+          "id": "1",
+          "comment": "Navigate to work schedule page",
+          "command": "open",
+          "target": "/",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "2",
+          "comment": "Click Work Schedule tab",
+          "command": "click",
+          "target": "css=button:contains('Work Schedule')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "3",
+          "comment": "Wait for work schedule page",
+          "command": "waitForElementVisible",
+          "target": "css=button:contains('Add Schedule')",
+          "targets": [],
+          "value": "3000"
+        },
+        {
+          "id": "4",
+          "comment": "Click Add Schedule button",
+          "command": "click",
+          "target": "css=button:contains('Add Schedule')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "5",
+          "comment": "Wait for schedule form",
+          "command": "waitForElementVisible",
+          "target": "css=input[placeholder*='job' i]",
+          "targets": [],
+          "value": "3000"
+        },
+        {
+          "id": "6",
+          "comment": "Enter job title",
+          "command": "type",
+          "target": "css=input[placeholder*='job' i]",
+          "targets": [],
+          "value": "Part-time Barista"
+        },
+        {
+          "id": "7",
+          "comment": "Select work days",
+          "command": "click",
+          "target": "css=input[value='Monday']",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "8",
+          "comment": "Select Wednesday",
+          "command": "click",
+          "target": "css=input[value='Wednesday']",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "9",
+          "comment": "Enter start time",
+          "command": "type",
+          "target": "css=input[type='time']:first-of-type",
+          "targets": [],
+          "value": "09:00"
+        },
+        {
+          "id": "10",
+          "comment": "Enter end time",
+          "command": "type",
+          "target": "css=input[type='time']:last-of-type",
+          "targets": [],
+          "value": "17:00"
+        },
+        {
+          "id": "11",
+          "comment": "Click save button",
+          "command": "click",
+          "target": "css=button:contains('Save')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "12",
+          "comment": "Wait for schedule to appear",
+          "command": "waitForElementVisible",
+          "target": "xpath=//div[contains(text(), 'Part-time Barista')]",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "13",
+          "comment": "Verify schedule created",
+          "command": "assertElementPresent",
+          "target": "xpath=//div[contains(text(), 'Part-time Barista')]",
+          "targets": [],
+          "value": ""
+        }
+      ]
+    },
+    {
+      "id": "test-ai-conflict-detection",
+      "name": "AI Conflict Detection on Task Creation",
+      "commands": [
+        {
+          "id": "1",
+          "comment": "Navigate to tasks page",
+          "command": "open",
+          "target": "/",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "2",
+          "comment": "Wait for dashboard",
+          "command": "waitForElementVisible",
+          "target": "css=button:contains('Add Task')",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "3",
+          "comment": "Click Add Task button",
+          "command": "click",
+          "target": "css=button:contains('Add Task')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "4",
+          "comment": "Wait for task form",
+          "command": "waitForElementVisible",
+          "target": "css=input[placeholder*='Task title' i]",
+          "targets": [],
+          "value": "3000"
+        },
+        {
+          "id": "5",
+          "comment": "Enter task title with exam keyword",
+          "command": "type",
+          "target": "css=input[placeholder*='Task title' i]",
+          "targets": [],
+          "value": "Math Final Exam"
+        },
+        {
+          "id": "6",
+          "comment": "Enter description",
+          "command": "type",
+          "target": "css=textarea[placeholder*='description' i]",
+          "targets": [],
+          "value": "Important final exam for calculus"
+        },
+        {
+          "id": "7",
+          "comment": "Select category",
+          "command": "select",
+          "target": "css=select[name='category']",
+          "targets": [],
+          "value": "label=Academic"
+        },
+        {
+          "id": "8",
+          "comment": "Select priority",
+          "command": "select",
+          "target": "css=select[name='priority']",
+          "targets": [],
+          "value": "label=High"
+        },
+        {
+          "id": "9",
+          "comment": "Set due date and time",
+          "command": "type",
+          "target": "css=input[type='datetime-local']",
+          "targets": [],
+          "value": "2024-12-25T10:00"
+        },
+        {
+          "id": "10",
+          "comment": "Click save button",
+          "command": "click",
+          "target": "css=button:contains('Save')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "11",
+          "comment": "Wait for AI modal to appear",
+          "command": "waitForElementVisible",
+          "target": "css=[role='dialog'], .modal, .ai-modal",
+          "targets": [],
+          "value": "10000"
+        },
+        {
+          "id": "12",
+          "comment": "Verify AI modal appeared",
+          "command": "assertElementPresent",
+          "target": "css=[role='dialog'], .modal, .ai-modal",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "13",
+          "comment": "Verify exam detection message",
+          "command": "assertText",
+          "target": "css=[role='dialog'] *",
+          "targets": [],
+          "value": "*Exam detected*"
+        }
+      ]
+    },
+    {
+      "id": "test-streak-modal",
+      "name": "View Streak Statistics",
+      "commands": [
+        {
+          "id": "1",
+          "comment": "Navigate to progress page",
+          "command": "open",
+          "target": "/",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "2",
+          "comment": "Click Progress tab",
+          "command": "click",
+          "target": "css=button:contains('Progress')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "3",
+          "comment": "Wait for progress page",
+          "command": "waitForElementVisible",
+          "target": "css=div:contains('Current Streak')",
+          "targets": [],
+          "value": "3000"
+        },
+        {
+          "id": "4",
+          "comment": "Click on streak card",
+          "command": "click",
+          "target": "xpath=//div[contains(text(), 'Current Streak')]/ancestor::div[contains(@class, 'cursor-pointer')]",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "5",
+          "comment": "Wait for streak modal",
+          "command": "waitForElementVisible",
+          "target": "css=[role='dialog']:contains('Streak')",
+          "targets": [],
+          "value": "3000"
+        },
+        {
+          "id": "6",
+          "comment": "Verify streak modal opened",
+          "command": "assertElementPresent",
+          "target": "css=[role='dialog']",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "7",
+          "comment": "Close modal",
+          "command": "click",
+          "target": "css=button[aria-label*='close' i]",
+          "targets": [],
+          "value": ""
+        }
+      ]
+    },
+    {
+      "id": "test-leaderboard-view",
+      "name": "View Leaderboard",
+      "commands": [
+        {
+          "id": "1",
+          "comment": "Navigate to leaderboard",
+          "command": "open",
+          "target": "/",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "2",
+          "comment": "Click Leaderboard tab",
+          "command": "click",
+          "target": "css=button:contains('Leaderboard'), button:contains('Pet')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "3",
+          "comment": "Wait for leaderboard to load",
+          "command": "waitForElementVisible",
+          "target": "css=.leaderboard-item, [data-testid='leaderboard-user']",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "4",
+          "comment": "Verify leaderboard loaded",
+          "command": "assertElementPresent",
+          "target": "css=.leaderboard-item, [data-testid='leaderboard-user']",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "5",
+          "comment": "Verify streak stats visible",
+          "command": "assertElementPresent",
+          "target": "xpath=//div[contains(text(), 'Current Streak')]",
+          "targets": [],
+          "value": ""
+        }
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "ai-workschedule-suite",
+      "name": "AI & Work Schedule Test Suite",
+      "persistSession": true,
+      "parallel": false,
+      "timeout": 300,
+      "tests": [
+        "test-create-work-schedule",
+        "test-ai-conflict-detection",
+        "test-streak-modal",
+        "test-leaderboard-view"
+      ]
+    }
+  ],
+  "urls": [
+    "https://learnwork-flow-1.onrender.com"
+  ],
+  "plugins": []
+}

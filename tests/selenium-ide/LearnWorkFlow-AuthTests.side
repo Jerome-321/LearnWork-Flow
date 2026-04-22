@@ -1,0 +1,228 @@
+{
+  "id": "auth-tests-learnworkflow",
+  "version": "2.0",
+  "name": "LearnWorkFlow - Authentication Tests",
+  "url": "https://learnwork-flow-1.onrender.com",
+  "tests": [
+    {
+      "id": "test-user-registration",
+      "name": "User Registration Flow",
+      "commands": [
+        {
+          "id": "1",
+          "comment": "Navigate to registration page",
+          "command": "open",
+          "target": "/",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "2",
+          "comment": "Wait for page to load",
+          "command": "waitForElementVisible",
+          "target": "css=input[type='email']",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "3",
+          "comment": "Enter email",
+          "command": "type",
+          "target": "css=input[type='email']",
+          "targets": [],
+          "value": "testuser${Math.floor(Math.random()*10000)}@test.com"
+        },
+        {
+          "id": "4",
+          "comment": "Enter username",
+          "command": "type",
+          "target": "css=input[placeholder*='username' i]",
+          "targets": [],
+          "value": "testuser${Math.floor(Math.random()*10000)}"
+        },
+        {
+          "id": "5",
+          "comment": "Enter password",
+          "command": "type",
+          "target": "css=input[type='password']",
+          "targets": [],
+          "value": "TestPassword123!"
+        },
+        {
+          "id": "6",
+          "comment": "Click register button",
+          "command": "click",
+          "target": "css=button:contains('Register')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "7",
+          "comment": "Wait for OTP input",
+          "command": "waitForElementVisible",
+          "target": "css=input[placeholder*='OTP' i]",
+          "targets": [],
+          "value": "10000"
+        },
+        {
+          "id": "8",
+          "comment": "Verify OTP page loaded",
+          "command": "assertElementPresent",
+          "target": "css=input[placeholder*='OTP' i]",
+          "targets": [],
+          "value": ""
+        }
+      ]
+    },
+    {
+      "id": "test-user-login",
+      "name": "User Login Flow",
+      "commands": [
+        {
+          "id": "1",
+          "comment": "Navigate to login page",
+          "command": "open",
+          "target": "/",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "2",
+          "comment": "Wait for page to load",
+          "command": "waitForElementVisible",
+          "target": "css=input[type='email']",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "3",
+          "comment": "Click login tab if exists",
+          "command": "clickAt",
+          "target": "xpath=//button[contains(text(), 'Login')]",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "4",
+          "comment": "Enter email",
+          "command": "type",
+          "target": "css=input[type='email']",
+          "targets": [],
+          "value": "testuser@test.com"
+        },
+        {
+          "id": "5",
+          "comment": "Enter password",
+          "command": "type",
+          "target": "css=input[type='password']",
+          "targets": [],
+          "value": "TestPassword123!"
+        },
+        {
+          "id": "6",
+          "comment": "Click login button",
+          "command": "click",
+          "target": "css=button:contains('Login')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "7",
+          "comment": "Wait for dashboard to load",
+          "command": "waitForElementVisible",
+          "target": "css=h1:contains('Tasks')",
+          "targets": [],
+          "value": "10000"
+        },
+        {
+          "id": "8",
+          "comment": "Verify dashboard loaded",
+          "command": "assertElementPresent",
+          "target": "css=h1:contains('Tasks')",
+          "targets": [],
+          "value": ""
+        }
+      ]
+    },
+    {
+      "id": "test-invalid-login",
+      "name": "Invalid Login Credentials",
+      "commands": [
+        {
+          "id": "1",
+          "comment": "Navigate to login page",
+          "command": "open",
+          "target": "/",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "2",
+          "comment": "Wait for page to load",
+          "command": "waitForElementVisible",
+          "target": "css=input[type='email']",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "3",
+          "comment": "Enter invalid email",
+          "command": "type",
+          "target": "css=input[type='email']",
+          "targets": [],
+          "value": "invalid@test.com"
+        },
+        {
+          "id": "4",
+          "comment": "Enter invalid password",
+          "command": "type",
+          "target": "css=input[type='password']",
+          "targets": [],
+          "value": "WrongPassword123!"
+        },
+        {
+          "id": "5",
+          "comment": "Click login button",
+          "command": "click",
+          "target": "css=button:contains('Login')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "6",
+          "comment": "Wait for error message",
+          "command": "waitForElementVisible",
+          "target": "css=.error, [role='alert'], .text-red-500",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "7",
+          "comment": "Verify error message appears",
+          "command": "assertElementPresent",
+          "target": "css=.error, [role='alert'], .text-red-500",
+          "targets": [],
+          "value": ""
+        }
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "auth-suite",
+      "name": "Authentication Test Suite",
+      "persistSession": false,
+      "parallel": false,
+      "timeout": 300,
+      "tests": [
+        "test-user-registration",
+        "test-user-login",
+        "test-invalid-login"
+      ]
+    }
+  ],
+  "urls": [
+    "https://learnwork-flow-1.onrender.com"
+  ],
+  "plugins": []
+}

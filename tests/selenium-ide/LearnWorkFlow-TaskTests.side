@@ -1,0 +1,338 @@
+{
+  "id": "task-tests-learnworkflow",
+  "version": "2.0",
+  "name": "LearnWorkFlow - Task Management Tests",
+  "url": "https://learnwork-flow-1.onrender.com",
+  "tests": [
+    {
+      "id": "test-create-task",
+      "name": "Create New Task",
+      "commands": [
+        {
+          "id": "1",
+          "comment": "Assume user is logged in",
+          "command": "open",
+          "target": "/",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "2",
+          "comment": "Wait for dashboard",
+          "command": "waitForElementVisible",
+          "target": "css=button:contains('Add Task')",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "3",
+          "comment": "Click Add Task button",
+          "command": "click",
+          "target": "css=button:contains('Add Task')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "4",
+          "comment": "Wait for task form modal",
+          "command": "waitForElementVisible",
+          "target": "css=input[placeholder*='Task title' i]",
+          "targets": [],
+          "value": "3000"
+        },
+        {
+          "id": "5",
+          "comment": "Enter task title",
+          "command": "type",
+          "target": "css=input[placeholder*='Task title' i]",
+          "targets": [],
+          "value": "Test Task - Selenium"
+        },
+        {
+          "id": "6",
+          "comment": "Enter task description",
+          "command": "type",
+          "target": "css=textarea[placeholder*='description' i]",
+          "targets": [],
+          "value": "This is a test task created by Selenium IDE"
+        },
+        {
+          "id": "7",
+          "comment": "Select category",
+          "command": "select",
+          "target": "css=select[name='category']",
+          "targets": [],
+          "value": "label=Academic"
+        },
+        {
+          "id": "8",
+          "comment": "Select priority",
+          "command": "select",
+          "target": "css=select[name='priority']",
+          "targets": [],
+          "value": "label=High"
+        },
+        {
+          "id": "9",
+          "comment": "Click save button",
+          "command": "click",
+          "target": "css=button:contains('Save')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "10",
+          "comment": "Wait for task to appear in list",
+          "command": "waitForElementVisible",
+          "target": "xpath=//div[contains(text(), 'Test Task - Selenium')]",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "11",
+          "comment": "Verify task created",
+          "command": "assertElementPresent",
+          "target": "xpath=//div[contains(text(), 'Test Task - Selenium')]",
+          "targets": [],
+          "value": ""
+        }
+      ]
+    },
+    {
+      "id": "test-complete-task",
+      "name": "Mark Task as Complete",
+      "commands": [
+        {
+          "id": "1",
+          "comment": "Navigate to tasks page",
+          "command": "open",
+          "target": "/",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "2",
+          "comment": "Wait for task list",
+          "command": "waitForElementVisible",
+          "target": "css=.task-item, [data-testid='task-item']",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "3",
+          "comment": "Click checkbox to complete task",
+          "command": "click",
+          "target": "css=input[type='checkbox']:first-of-type",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "4",
+          "comment": "Wait for completion animation",
+          "command": "pause",
+          "target": "",
+          "targets": [],
+          "value": "2000"
+        },
+        {
+          "id": "5",
+          "comment": "Verify task marked as complete",
+          "command": "assertChecked",
+          "target": "css=input[type='checkbox']:first-of-type",
+          "targets": [],
+          "value": ""
+        }
+      ]
+    },
+    {
+      "id": "test-edit-task",
+      "name": "Edit Existing Task",
+      "commands": [
+        {
+          "id": "1",
+          "comment": "Navigate to tasks page",
+          "command": "open",
+          "target": "/",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "2",
+          "comment": "Wait for task list",
+          "command": "waitForElementVisible",
+          "target": "css=.task-item, [data-testid='task-item']",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "3",
+          "comment": "Click edit button on first task",
+          "command": "click",
+          "target": "css=button[aria-label*='edit' i]:first-of-type",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "4",
+          "comment": "Wait for edit form",
+          "command": "waitForElementVisible",
+          "target": "css=input[placeholder*='Task title' i]",
+          "targets": [],
+          "value": "3000"
+        },
+        {
+          "id": "5",
+          "comment": "Clear and update title",
+          "command": "type",
+          "target": "css=input[placeholder*='Task title' i]",
+          "targets": [],
+          "value": "Updated Task Title"
+        },
+        {
+          "id": "6",
+          "comment": "Click save button",
+          "command": "click",
+          "target": "css=button:contains('Save')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "7",
+          "comment": "Wait for update to complete",
+          "command": "pause",
+          "target": "",
+          "targets": [],
+          "value": "2000"
+        },
+        {
+          "id": "8",
+          "comment": "Verify task updated",
+          "command": "assertElementPresent",
+          "target": "xpath=//div[contains(text(), 'Updated Task Title')]",
+          "targets": [],
+          "value": ""
+        }
+      ]
+    },
+    {
+      "id": "test-delete-task",
+      "name": "Delete Task",
+      "commands": [
+        {
+          "id": "1",
+          "comment": "Navigate to tasks page",
+          "command": "open",
+          "target": "/",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "2",
+          "comment": "Wait for task list",
+          "command": "waitForElementVisible",
+          "target": "css=.task-item, [data-testid='task-item']",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "3",
+          "comment": "Store task title before deletion",
+          "command": "storeText",
+          "target": "css=.task-item:first-of-type .task-title",
+          "targets": [],
+          "value": "taskTitle"
+        },
+        {
+          "id": "4",
+          "comment": "Click delete button",
+          "command": "click",
+          "target": "css=button[aria-label*='delete' i]:first-of-type",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "5",
+          "comment": "Confirm deletion if modal appears",
+          "command": "click",
+          "target": "css=button:contains('Confirm'), button:contains('Delete')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "6",
+          "comment": "Wait for deletion to complete",
+          "command": "pause",
+          "target": "",
+          "targets": [],
+          "value": "2000"
+        }
+      ]
+    },
+    {
+      "id": "test-filter-tasks",
+      "name": "Filter Tasks by Category",
+      "commands": [
+        {
+          "id": "1",
+          "comment": "Navigate to tasks page",
+          "command": "open",
+          "target": "/",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "2",
+          "comment": "Wait for task list",
+          "command": "waitForElementVisible",
+          "target": "css=.task-item, [data-testid='task-item']",
+          "targets": [],
+          "value": "5000"
+        },
+        {
+          "id": "3",
+          "comment": "Click Academic filter",
+          "command": "click",
+          "target": "css=button:contains('Academic')",
+          "targets": [],
+          "value": ""
+        },
+        {
+          "id": "4",
+          "comment": "Wait for filter to apply",
+          "command": "pause",
+          "target": "",
+          "targets": [],
+          "value": "1000"
+        },
+        {
+          "id": "5",
+          "comment": "Verify only academic tasks shown",
+          "command": "assertElementPresent",
+          "target": "css=.task-item[data-category='academic']",
+          "targets": [],
+          "value": ""
+        }
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "task-suite",
+      "name": "Task Management Test Suite",
+      "persistSession": true,
+      "parallel": false,
+      "timeout": 300,
+      "tests": [
+        "test-create-task",
+        "test-complete-task",
+        "test-edit-task",
+        "test-filter-tasks",
+        "test-delete-task"
+      ]
+    }
+  ],
+  "urls": [
+    "https://learnwork-flow-1.onrender.com"
+  ],
+  "plugins": []
+}
