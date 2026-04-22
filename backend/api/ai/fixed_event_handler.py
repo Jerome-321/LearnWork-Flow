@@ -15,12 +15,126 @@ class FixedEventHandler:
     
     # Event types that are automatically marked as fixed
     FIXED_EVENT_KEYWORDS = {
-        'exam': ['exam', 'test', 'quiz', 'midterm', 'final', 'assessment'],
-        'birthday': ['birthday', 'bday', 'celebration', 'party', 'anniversary'],
-        'appointment': ['appointment', 'meeting', 'interview', 'consultation', 'doctor', 'dentist'],
-        'presentation': ['presentation', 'demo', 'pitch', 'defense', 'showcase'],
-        'ceremony': ['ceremony', 'graduation', 'wedding', 'funeral', 'event'],
-        'deadline': ['deadline', 'submission', 'due date', 'cutoff']
+        'exam': [
+            'exam', 'test', 'quiz', 'midterm', 'final', 'assessment',
+            'finals', 'periodical', 'evaluation', 'board exam',
+            'entrance exam', 'certification exam', 'comprehensive exam'
+        ],
+        'birthday': [
+            'birthday', 'bday', 'celebration', 'party',
+            'anniversary', 'debut', 'surprise party',
+            'birthday dinner', 'birthday celebration'
+        ],
+        'appointment': [
+            'appointment', 'meeting', 'interview', 'consultation',
+            'doctor', 'dentist', 'checkup', 'therapy', 'session',
+            'clinic visit', 'medical appointment', 'hospital visit',
+            'follow-up', 'check-up'
+        ],
+        'presentation': [
+            'presentation', 'demo', 'pitch', 'defense', 'showcase',
+            'thesis defense', 'capstone defense', 'final defense',
+            'oral presentation', 'reporting', 'project presentation'
+        ],
+        'ceremony': [
+            'ceremony', 'graduation', 'wedding', 'funeral',
+            'recognition', 'awarding', 'commencement',
+            'formal event', 'rites'
+        ],
+        'deadline': [
+            'deadline', 'submission', 'due date', 'cutoff',
+            'final submission', 'closing date', 'last day',
+            'due', 'turn in', 'submission deadline'
+        ],
+        'class': [
+            'class', 'lecture', 'lab', 'laboratory', 'subject',
+            'course', 'session', 'lesson',
+            'online class', 'f2f', 'face to face'
+        ],
+        'work_shift': [
+            'work', 'shift', 'duty', 'office hours', 'job',
+            'part-time', 'full-time', 'work hours',
+            'shift schedule', 'duty hours'
+        ],
+        'travel': [
+            'flight', 'trip', 'travel', 'departure', 'arrival',
+            'boarding', 'vacation', 'outing',
+            'airport', 'check-in', 'itinerary'
+        ],
+        'religious': [
+            'mass', 'church', 'prayer', 'service',
+            'worship', 'religious event',
+            'sunday service', 'devotion', 'holy mass'
+        ],
+        'competition': [
+            'competition', 'contest', 'tournament',
+            'hackathon', 'game', 'match',
+            'league', 'championship'
+        ],
+        'family_event': [
+            'family gathering', 'reunion', 'family dinner',
+            'family lunch', 'family party',
+            'get together', 'family time'
+        ],
+        'school_event': [
+            'seminar', 'workshop', 'orientation',
+            'academic event', 'conference',
+            'forum', 'training'
+        ],
+        'government': [
+            'registration', 'renewal', 'license',
+            'passport', 'application', 'clearance',
+            'government processing'
+        ],
+        'financial': [
+            'payment', 'billing', 'tuition',
+            'installment', 'loan', 'bank',
+            'payment deadline'
+        ],
+        'health': [
+            'vaccination', 'medical test',
+            'lab test', 'x-ray',
+            'health check', 'screening'
+        ],
+        'social': [
+            'hangout', 'meetup', 'gathering',
+            'outing', 'bonding', 'chill'
+        ],
+        'delivery': [
+            'delivery', 'pickup',
+            'package', 'courier',
+            'parcel', 'shipment'
+        ],
+        'maintenance': [
+            'repair', 'maintenance',
+            'service', 'inspection',
+            'technician visit'
+        ],
+        'legal': [
+            'hearing', 'court',
+            'legal appointment',
+            'case meeting'
+        ],
+        'sports': [
+            'practice', 'training',
+            'game day', 'match day',
+            'sports event'
+        ],
+        'internship': [
+            'internship', 'ojt',
+            'on the job training',
+            'intern duty'
+        ],
+        'club_activity': [
+            'club meeting',
+            'organization meeting',
+            'org event'
+        ],
+        'review': [
+            'review session',
+            'exam review',
+            'study review'
+        ]
     }
     
     def __init__(self):
