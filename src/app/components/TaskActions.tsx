@@ -466,6 +466,43 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
       <>
         <ActionLoadingOverlay isLoading={actionLoading} message="Processing..." />
         
+        {isAnalyzingSubmit && (
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/30 px-4">
+            <div className="flex items-center gap-2 rounded-lg bg-white p-4 text-sm font-medium shadow-lg">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700" />
+              Analyzing with AI...
+            </div>
+          </div>
+        )}
+
+        <Dialog open={showAiModal} onOpenChange={setShowAiModal}>
+          <DialogContent className="max-w-md p-6">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-xl font-bold">AI Scheduling Suggestion</DialogTitle>
+            </DialogHeader>
+            {aiSuggestion && (
+              <div className="space-y-4">
+                <div className="border-b pb-3">
+                  <div className="text-sm font-semibold text-gray-600 mb-1">Suggested Time:</div>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {formatDueDate(formData.dueDate)} at {formatTime12Hour(aiSuggestion.suggested_time || "18:00")}
+                  </div>
+                </div>
+                {aiSuggestion.reason && (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Details</div>
+                    <div className="text-sm text-gray-700">{aiSuggestion.reason}</div>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="mt-6 flex gap-3">
+              <Button className="flex-1" onClick={handleAIModalAccept}>✓ Accept</Button>
+              <Button className="flex-1" variant="outline" onClick={handleAIModalDecline}>✕ Keep Original</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        
         <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
 
         <div className="fixed inset-x-0 bottom-0 z-50 max-h-[90vh] overflow-y-auto bg-card shadow-2xl rounded-t-2xl lg:right-0 lg:left-auto lg:top-16 lg:bottom-0 lg:rounded-none lg:h-[calc(100vh-4rem)] lg:w-[500px] lg:border-l">
