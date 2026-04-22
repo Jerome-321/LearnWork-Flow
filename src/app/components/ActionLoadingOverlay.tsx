@@ -4,25 +4,39 @@ import { Loader2 } from "lucide-react";
 interface ActionLoadingOverlayProps {
   isLoading: boolean;
   message?: string;
+  delayBeforeFade?: number; // Delay in ms after loading completes before fading
 }
 
-export function ActionLoadingOverlay({ isLoading, message = "Processing..." }: ActionLoadingOverlayProps) {
+export function ActionLoadingOverlay({ 
+  isLoading, 
+  message = "Processing...",
+  delayBeforeFade = 500 
+}: ActionLoadingOverlayProps) {
   const [show, setShow] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
+  const [internalLoading, setInternalLoading] = useState(false);
 
   useEffect(() => {
     if (isLoading) {
+      // Action started - show loading immediately
       setShow(true);
       setFadeOut(false);
-    } else if (show) {
-      setFadeOut(true);
-      const timer = setTimeout(() => {
-        setShow(false);
-        setFadeOut(false);
-      }, 400);
-      return () => clearTimeout(timer);
+      setInternalLoading(true);
+    } else if (internalLoading) {
+      // Loading finished - keep showing for a bit to let UI update
+      const delayTimer = setTimeout(() => {
+        // Start fade out after delay
+        setFadeOut(true);
+        const fadeTimer = setTimeout(() => {
+          setShow(false);
+          setFadeOut(false);
+          setInternalLoading(false);
+        }, 400); // Fade duration
+        return () => clearTimeout(fadeTimer);
+      }, delayBeforeFade);
+      return () => clearTimeout(delayTimer);
     }
-  }, [isLoading, show]);
+  }, [isLoading, internalLoading, delayBeforeFade]);
 
   if (!show) return null;
 
