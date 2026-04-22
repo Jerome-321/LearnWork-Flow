@@ -204,6 +204,7 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
     # ===== STEP 1: Check task vs existing tasks =====
     task_conflicts = []
     fixed_event_conflicts = []  # Track conflicts with fixed events separately
+    same_day_tasks = []  # Track all tasks on same day for awareness
     print(f"[DEBUG GROQ] Checking {len(all_tasks)} existing tasks for conflicts with '{task_title}' at {due_day} {due_time}")
     
     for existing_task in all_tasks:
@@ -226,6 +227,15 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
             continue
 
         print(f"[DEBUG GROQ]     Same day? {existing_day} == {due_day}? YES")
+
+        # Track all tasks on same day
+        if str(existing_task.get('id')) != str(task.get('id')):
+            same_day_tasks.append({
+                'title': existing_task.get('title', ''),
+                'time': existing_time,
+                'priority': existing_task.get('priority', 'medium'),
+                'is_fixed': existing_task.get('is_fixed', False)
+            })
 
         existing_duration = existing_task.get('estimatedDuration', 60) if existing_task.get('estimatedDuration') else 60
         existing_duration = int(existing_duration) if isinstance(existing_duration, (int, float, str)) and str(existing_duration).isdigit() else 60
@@ -288,7 +298,7 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
     # If task vs task conflict found (non-fixed)
     if task_conflicts:
         conflict_task = task_conflicts[0]
-        analysis = f"Analysis: Your '{task_title}' conflicts with existing task '{conflict_task['title']}' at {format_12h(conflict_task['time'])}."
+        analysis = f"⚠️ Schedule Conflict: Your '{task_title}' ({task_priority} priority) overlaps with '{conflict_task['title']}' ({conflict_task['priority']} priority) at {format_12h(conflict_task['time'])}."
         
         # Build work schedule summary for context
         work_schedule_summary = []
@@ -300,18 +310,25 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
                     'end_time': format_12h(schedule.get('end_time', '')),
                 })
         
+        # List all same-day tasks for context
+        other_tasks_info = ""
+        if len(same_day_tasks) > 1:
+            other_tasks_info = f" You also have {len(same_day_tasks)-1} other task(s) scheduled today."
+        
         return {
             "type": "conflict",
-            "analysis_step": "Task vs Task Conflict Detected",
+            "analysis_step": "Task Overlap Detected",
             "conflict_with_task": conflict_task['title'],
             "conflict_time": format_12h(conflict_task['time']),
+            "conflict_priority": conflict_task['priority'],
             "task": task_title,
             "priority": task_priority,
             "scheduled_time": format_12h(due_time),
-            "suggested_time": _find_alternative_slots(due_day, [], task_priority).get('suggested_time', '14:00'),
-            "reason": analysis + " Rescheduling to avoid overlap.",
+            "suggested_time": _find_alternative_slots(due_day, same_day_tasks, task_priority).get('suggested_time', '14:00'),
+            "reason": analysis + other_tasks_info + " I recommend rescheduling to avoid time overlap and maintain productivity.",
             "estimated_duration": "1–2 hours",
             "work_schedules": work_schedule_summary,
+            "same_day_tasks": len(same_day_tasks),
             "tip": _get_productivity_tip(task_priority)
         }
 
@@ -359,7 +376,44 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
             "tip": _get_productivity_tip(task_priority)
         }
 
-    # ===== STEP 3: No conflicts - suggest best time =====
+    # ===== STEP 3: Check if there are tasks on same day (even without overlap) =====
+    # Show awareness modal if there are other tasks on the same day
+    if same_day_tasks:
+        best_slot = _find_best_slot(due_day, work_schedule_conflicts, task_priority, work_schedules)
+        
+        # Build work schedule summary
+        work_schedule_summary = []
+        for schedule in work_schedules:
+            if due_day in schedule.get('work_days', []):
+                work_schedule_summary.append({
+                    'job_title': schedule.get('job_title', 'Work Schedule'),
+                    'start_time': format_12h(schedule.get('start_time', '')),
+                    'end_time': format_12h(schedule.get('end_time', '')),
+                })
+        
+        # List other tasks
+        task_list = ", ".join([f"{t['title']} ({t['priority']}) at {format_12h(t['time'])}" for t in same_day_tasks[:3]])
+        if len(same_day_tasks) > 3:
+            task_list += f" and {len(same_day_tasks)-3} more"
+        
+        analysis = f"📅 Schedule Awareness: You have {len(same_day_tasks)} other task(s) on {due_day}: {task_list}. While there's no direct time conflict, consider spacing your tasks throughout the day for better productivity."
+        
+        return {
+            "type": "awareness",
+            "analysis_step": "Multiple Tasks on Same Day",
+            "task": task_title,
+            "priority": task_priority,
+            "scheduled_time": format_12h(due_time),
+            "suggested_time": best_slot.get('time', due_time),
+            "reason": analysis,
+            "estimated_duration": "1–2 hours",
+            "work_schedules": work_schedule_summary,
+            "same_day_tasks": len(same_day_tasks),
+            "other_tasks": same_day_tasks,
+            "tip": "💡 Tip: Spread tasks throughout the day to avoid burnout and maintain focus."
+        }
+    
+    # ===== STEP 4: No conflicts and no other tasks - suggest best time =====
     best_slot = _find_best_slot(due_day, work_schedule_conflicts, task_priority, work_schedules)
     
     # Build work schedule summary
@@ -372,19 +426,7 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
                 'end_time': format_12h(schedule.get('end_time', '')),
             })
     
-    # More explicit context for analysis details in no-conflict case
-    no_conflict_extras = ""
-    if all_tasks:
-        relevant = [t for t in all_tasks if datetime.fromisoformat(t.get('dueDate').replace('Z', '+00:00')).strftime('%A') == due_day]
-        if relevant:
-            titles = [t.get('title') for t in relevant]
-            no_conflict_extras = " Existing tasks today: " + ", ".join(titles) + "."
-
-    analysis = (
-        "Analysis: No conflicts found. "
-        "Task does not overlap with today\'s booked tasks or your work schedule."
-        f"{no_conflict_extras}"
-    )
+    analysis = "✅ Clear Schedule: No conflicts detected. Your schedule looks good for this task!"
 
     return {
         "type": "suggestion",
