@@ -29,14 +29,16 @@ export function AllTasksPage() {
   const { schedules } = useWorkScheduleAPI();
   const [showWorkScheduleModal, setShowWorkScheduleModal] = useState(false);
 
-  // Check if user has tasks but no work schedule
+  // Check if user has tasks but no work schedule (only show once per session)
   useEffect(() => {
     const hasTasks = tasks.length > 0;
     const hasWorkSchedule = schedules.length > 0;
+    const hasSeenModal = sessionStorage.getItem('hasSeenWorkScheduleModal');
     
-    // Show modal if user has tasks but no work schedule
-    if (hasTasks && !hasWorkSchedule && !loading) {
+    // Show modal only if: user has tasks, no work schedule, not loading, and hasn't seen it this session
+    if (hasTasks && !hasWorkSchedule && !loading && !hasSeenModal) {
       setShowWorkScheduleModal(true);
+      sessionStorage.setItem('hasSeenWorkScheduleModal', 'true');
     }
   }, [tasks.length, schedules.length, loading]);
 
