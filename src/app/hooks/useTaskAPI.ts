@@ -582,6 +582,7 @@ export function useTaskAPI() {
       // Brief delay for loading indicator
       await new Promise(resolve => setTimeout(resolve, 300));
       console.log('Online toggle complete');
+      triggerReloadWithLoading();
 
     } catch (error) {
       console.error("Error toggling task:", error);
