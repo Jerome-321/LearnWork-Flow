@@ -734,7 +734,8 @@ def ai_analyze_task(request):
             "dueDate": task.dueDate.isoformat() if hasattr(task.dueDate, 'isoformat') else str(task.dueDate),
             "priority": task.priority,
             "estimatedDuration": task.estimatedDuration or 60,
-            "completed": task.completed
+            "completed": task.completed,
+            "is_fixed": getattr(task, 'is_fixed', False)  # Mark fixed events
         })
 
     # Get user's work schedules

@@ -70,6 +70,9 @@ class Task(models.Model):
     completed = models.BooleanField(default=False)
 
     points = models.IntegerField(default=0)
+    
+    # Fixed event flag - cannot be rescheduled by AI
+    is_fixed = models.BooleanField(default=False)
 
     # Add image and link fields
     image = models.ImageField(upload_to='task_images/', null=True, blank=True)

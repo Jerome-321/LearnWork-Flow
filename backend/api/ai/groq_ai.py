@@ -203,6 +203,7 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
     
     # ===== STEP 1: Check task vs existing tasks =====
     task_conflicts = []
+    fixed_event_conflicts = []  # Track conflicts with fixed events separately
     print(f"[DEBUG GROQ] Checking {len(all_tasks)} existing tasks for conflicts with '{task_title}' at {due_day} {due_time}")
     
     for existing_task in all_tasks:
@@ -237,14 +238,54 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
         if has_overlap:
             if str(existing_task.get('id')) != str(task.get('id')):
                 print(f"[DEBUG GROQ]     CONFLICT FOUND!")
-                task_conflicts.append({
+                conflict_data = {
                     'title': existing_task.get('title', ''),
                     'time': existing_time,
                     'date': existing_due_dt.strftime('%Y-%m-%d'),
-                    'priority': existing_task.get('priority', 'medium')
-                })
+                    'priority': existing_task.get('priority', 'medium'),
+                    'is_fixed': existing_task.get('is_fixed', False)
+                }
+                
+                # Separate fixed events from regular tasks
+                if existing_task.get('is_fixed', False):
+                    fixed_event_conflicts.append(conflict_data)
+                else:
+                    task_conflicts.append(conflict_data)
 
-    # If task vs task conflict found
+    # If conflict with FIXED event - must reschedule the new task
+    if fixed_event_conflicts:
+        fixed_event = fixed_event_conflicts[0]
+        analysis = f"Analysis: Your '{task_title}' conflicts with FIXED EVENT '{fixed_event['title']}' at {format_12h(fixed_event['time'])}. This event cannot be moved."
+        
+        # Build work schedule summary for context
+        work_schedule_summary = []
+        for schedule in work_schedules:
+            if due_day in schedule.get('work_days', []):
+                work_schedule_summary.append({
+                    'job_title': schedule.get('job_title', 'Work Schedule'),
+                    'start_time': format_12h(schedule.get('start_time', '')),
+                    'end_time': format_12h(schedule.get('end_time', '')),
+                })
+        
+        # Find alternative time avoiding ALL fixed events
+        alternative_time = _find_alternative_avoiding_fixed(due_day, fixed_event_conflicts, all_tasks, task_priority)
+        
+        return {
+            "type": "fixed_conflict",
+            "analysis_step": "Conflict with Fixed Event Detected",
+            "conflict_with_fixed": fixed_event['title'],
+            "conflict_time": format_12h(fixed_event['time']),
+            "task": task_title,
+            "priority": task_priority,
+            "scheduled_time": format_12h(due_time),
+            "suggested_time": alternative_time.get('suggested_time', '14:00'),
+            "reason": analysis + f" Rescheduling to {format_12h(alternative_time.get('suggested_time', '14:00'))} to avoid fixed event.",
+            "estimated_duration": "1–2 hours",
+            "work_schedules": work_schedule_summary,
+            "tip": "⚠️ Fixed events (birthdays, appointments) cannot be moved. Other tasks must work around them."
+        }
+    
+    # If task vs task conflict found (non-fixed)
     if task_conflicts:
         conflict_task = task_conflicts[0]
         analysis = f"Analysis: Your '{task_title}' conflicts with existing task '{conflict_task['title']}' at {format_12h(conflict_task['time'])}."
@@ -418,3 +459,55 @@ def _get_productivity_tip(priority):
     }
     
     return tips.get(priority, tips['medium'])
+
+
+def _find_alternative_avoiding_fixed(day, fixed_conflicts, all_tasks, priority):
+    """Find alternative time slot that avoids ALL fixed events"""
+    # Get all fixed event times on this day
+    fixed_times = []
+    for task in all_tasks:
+        if task.get('is_fixed', False):
+            try:
+                task_due = datetime.fromisoformat(task.get('dueDate', '').replace('Z', '+00:00'))
+                if task_due.strftime('%A') == day:
+                    fixed_times.append({
+                        'time': task_due.strftime('%H:%M'),
+                        'duration': task.get('estimatedDuration', 60)
+                    })
+            except:
+                pass
+    
+    # Priority-based time slots
+    priority_slots = {
+        'high': ['09:00', '10:00', '11:00', '14:00', '15:00'],
+        'medium': ['14:00', '15:00', '16:00', '10:00', '11:00'],
+        'low': ['17:00', '18:00', '19:00', '16:00', '15:00']
+    }
+    
+    candidate_times = priority_slots.get(priority, priority_slots['medium'])
+    
+    # Find first slot that doesn't conflict with any fixed event
+    for candidate in candidate_times:
+        conflicts = False
+        candidate_minutes = int(candidate.split(':')[0]) * 60 + int(candidate.split(':')[1])
+        
+        for fixed in fixed_times:
+            fixed_start = int(fixed['time'].split(':')[0]) * 60 + int(fixed['time'].split(':')[1])
+            fixed_end = fixed_start + fixed['duration']
+            
+            # Check if candidate overlaps with fixed event
+            if candidate_minutes < fixed_end and (candidate_minutes + 120) > fixed_start:
+                conflicts = True
+                break
+        
+        if not conflicts:
+            return {
+                'suggested_time': candidate,
+                'reason': f'This time avoids all fixed events and suits your {priority}-priority task'
+            }
+    
+    # Fallback if all slots conflict
+    return {
+        'suggested_time': '20:00',
+        'reason': 'Evening slot to avoid fixed events'
+    }

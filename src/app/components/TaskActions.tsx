@@ -105,11 +105,75 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
 
   const handleSaveAllChanges = async () => {
     if (!task) return;
-    try {
-      const dueDateTime = formData.dueTime
-        ? `${formData.dueDate}T${formData.dueTime}:00`
-        : `${formData.dueDate}T23:59:00`;
+    
+    // Check if date/time/priority changed - trigger AI analysis
+    const dueDateTime = formData.dueTime
+      ? `${formData.dueDate}T${formData.dueTime}:00`
+      : `${formData.dueDate}T23:59:00`;
+    
+    const originalDueDate = new Date(task.dueDate).toISOString();
+    const hasScheduleChange = dueDateTime !== originalDueDate || 
+                              formData.priority !== task.priority ||
+                              formData.category !== task.category;
+    
+    if (hasScheduleChange) {
+      // Trigger AI analysis for schedule changes
+      try {
+        setIsAnalyzingSubmit(true);
+        const token = getAccessToken();
+        const response = await fetch("https://learnwork-flow.onrender.com/api/ai/analyze/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            id: task.id,  // Include task ID to exclude from conflict check
+            title: formData.title,
+            description: description,
+            category: formData.category,
+            priority: formData.priority,
+            dueDate: dueDateTime,
+            estimatedDuration: 60,
+          }),
+        });
 
+        if (response.ok) {
+          const aiData = await response.json();
+          
+          // Check if AI suggests a different time
+          if (aiData.type === "conflict" || aiData.type === "fixed_conflict") {
+            setAiSuggestion({
+              ...aiData,
+              suggested_time: aiData.suggested_time || formData.dueTime || "18:00",
+              priority: aiData.priority || formData.priority,
+              reason: aiData.reason || "AI detected a scheduling conflict.",
+            });
+            
+            // Store pending update
+            setPendingTaskPayload({
+              title: formData.title,
+              description: description,
+              category: formData.category,
+              priority: formData.priority,
+              dueDate: dueDateTime,
+            });
+            
+            setIsAnalyzingSubmit(false);
+            setShowAiModal(true);
+            return; // Don't save yet, wait for user decision
+          }
+        }
+      } catch (err) {
+        console.error("Error during AI analysis:", err);
+        // Continue with update even if AI fails
+      } finally {
+        setIsAnalyzingSubmit(false);
+      }
+    }
+    
+    // No conflicts or AI analysis failed - proceed with update
+    try {
       await updateTask(task.id, {
         title: formData.title,
         description: description,
@@ -297,15 +361,32 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
       toast.error("No task data available");
       return;
     }
-    try {
-      await addTask(pendingTaskPayload, true);
-      toast.success("Task created with your original settings");
-      setShowAiModal(false);
-      setAiSuggestion(null);
-      setPendingTaskPayload(null);
-      resetForm();
-    } catch (error) {
-      toast.error("Failed to create task");
+    
+    // Check if we're updating or creating
+    if (task) {
+      // Updating existing task - use original values
+      try {
+        await updateTask(task.id, pendingTaskPayload);
+        toast.success("Task updated with your original settings");
+        setShowAiModal(false);
+        setAiSuggestion(null);
+        setPendingTaskPayload(null);
+        setIsEditing(false);
+      } catch (error) {
+        toast.error("Failed to update task");
+      }
+    } else {
+      // Creating new task
+      try {
+        await addTask(pendingTaskPayload, true);
+        toast.success("Task created with your original settings");
+        setShowAiModal(false);
+        setAiSuggestion(null);
+        setPendingTaskPayload(null);
+        resetForm();
+      } catch (error) {
+        toast.error("Failed to create task");
+      }
     }
   };
 
@@ -321,16 +402,34 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
       dueDate: `${formData.dueDate}T${suggestedTime}:00`,
       priority: suggestedPriority,
     };
-    try {
-      await addTask(finalPayload, true);
-      toast.success("Task created with AI suggestion applied");
-    } catch (err) {
-      toast.error("Failed to create task");
-    } finally {
-      setPendingTaskPayload(null);
-      setAiSuggestion(null);
-      setShowAiModal(false);
-      resetForm();
+    
+    // Check if we're updating or creating
+    if (task) {
+      // Updating existing task
+      try {
+        await updateTask(task.id, finalPayload);
+        toast.success("Task updated with AI suggestion applied");
+        setIsEditing(false);
+      } catch (err) {
+        toast.error("Failed to update task");
+      } finally {
+        setPendingTaskPayload(null);
+        setAiSuggestion(null);
+        setShowAiModal(false);
+      }
+    } else {
+      // Creating new task
+      try {
+        await addTask(finalPayload, true);
+        toast.success("Task created with AI suggestion applied");
+      } catch (err) {
+        toast.error("Failed to create task");
+      } finally {
+        setPendingTaskPayload(null);
+        setAiSuggestion(null);
+        setShowAiModal(false);
+        resetForm();
+      }
     }
   };
 
