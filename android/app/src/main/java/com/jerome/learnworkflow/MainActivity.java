@@ -49,7 +49,7 @@ public class MainActivity extends BridgeActivity {
     }
     
     @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         // Trigger sync when app comes to foreground
         if (bridge != null) {
