@@ -298,7 +298,7 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
     # If task vs task conflict found (non-fixed)
     if task_conflicts:
         conflict_task = task_conflicts[0]
-        analysis = f"⚠️ Schedule Conflict: Your '{task_title}' ({task_priority} priority) overlaps with '{conflict_task['title']}' ({conflict_task['priority']} priority) at {format_12h(conflict_task['time'])}."
+        analysis = f" Schedule Conflict: Your '{task_title}' ({task_priority} priority) overlaps with '{conflict_task['title']}' ({conflict_task['priority']} priority) at {format_12h(conflict_task['time'])}."
         
         # Build work schedule summary for context
         work_schedule_summary = []
@@ -426,7 +426,7 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
                 'end_time': format_12h(schedule.get('end_time', '')),
             })
     
-    analysis = "✅ Clear Schedule: No conflicts detected. Your schedule looks good for this task!"
+    analysis = " Clear Schedule: No conflicts detected. Your schedule looks good for this task!"
 
     return {
         "type": "suggestion",
@@ -495,9 +495,9 @@ def _find_best_slot(day, conflicts, priority, work_schedules):
 def _get_productivity_tip(priority):
     """Get work-life balance tip based on priority"""
     tips = {
-        'high': '💡 Tip: Schedule high-priority tasks early in the day when your focus is sharpest.',
-        'medium': '💡 Tip: Balance your schedule by spacing medium-priority tasks throughout the day.',
-        'low': '💡 Tip: Low-priority tasks can be batched together or scheduled flexibly around your main commitments.'
+        'high': ' Tip: Schedule high-priority tasks early in the day when your focus is sharpest.',
+        'medium': ' Tip: Balance your schedule by spacing medium-priority tasks throughout the day.',
+        'low': ' Tip: Low-priority tasks can be batched together or scheduled flexibly around your main commitments.'
     }
     
     return tips.get(priority, tips['medium'])
