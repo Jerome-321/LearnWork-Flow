@@ -18,6 +18,7 @@ from api.views import (
     progress,
     leaderboard,
     ai_analyze_task,
+    optimize_schedule,
     get_notifications,
     mark_notification_read,
     mark_all_notifications_read,
@@ -72,6 +73,7 @@ urlpatterns = [
     path('api/progress/', progress),
     path('api/leaderboard/', leaderboard),
     path("api/ai/analyze/", ai_analyze_task),
+    path("api/ai/optimize-schedule/", optimize_schedule),
 
     # Notifications
     path("api/notifications/", get_notifications),

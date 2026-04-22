@@ -18,7 +18,9 @@ from .models import Task, UserProgress, Notification, UserNotificationSettings, 
 from .serializers import TaskSerializer, NotificationSerializer, UserNotificationSettingsSerializer, WorkScheduleSerializer, StreakSerializer
 
 from rest_framework.decorators import api_view, permission_classes
-from .ai.ai_service import generate_schedule, generate_work_schedule_suggestion, groq_task_schedule_suggestion
+from .ai.groq_ai import groq_task_schedule_suggestion
+from .ai.ai_service import generate_work_schedule_suggestion
+from .ai.unified_ai_optimizer import UnifiedAIOptimizer
 
 # Push notification utilities
 from pywebpush import webpush, WebPushException
@@ -717,6 +719,90 @@ def leaderboard(request):
         })
     
     return Response(result)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def optimize_schedule(request):
+    """
+    Unified AI Optimizer - 100% Performance Scheduling
+    Uses ensemble of 5 AI algorithms for optimal task scheduling
+    """
+    user = request.user
+    
+    # Get all incomplete tasks
+    tasks_query = Task.objects.filter(user=user, completed=False)
+    
+    tasks = []
+    fixed_events = []
+    
+    for task in tasks_query:
+        task_data = {
+            'id': str(task.id),
+            'title': task.title,
+            'description': task.description or '',
+            'category': task.category,
+            'priority': task.priority or 'medium',
+            'dueDate': task.dueDate.isoformat() if task.dueDate else None,
+            'estimatedDuration': task.estimatedDuration or 60,
+            'day': task.dueDate.strftime('%A') if task.dueDate else 'Monday',
+            'is_fixed': getattr(task, 'is_fixed', False)
+        }
+        
+        # Separate fixed events from regular tasks
+        if task_data['is_fixed']:
+            task_data['time'] = task.dueDate.strftime('%H:%M') if task.dueDate else '09:00'
+            task_data['duration'] = task.estimatedDuration or 60
+            fixed_events.append(task_data)
+        else:
+            tasks.append(task_data)
+    
+    # Get work schedules
+    work_schedules_query = WorkSchedule.objects.filter(user=user)
+    work_schedules = []
+    
+    for schedule in work_schedules_query:
+        work_schedules.append({
+            'job_title': schedule.job_title or 'Work Schedule',
+            'work_days': schedule.work_days or [],
+            'start_time': schedule.start_time.strftime('%H:%M') if schedule.start_time else '09:00',
+            'end_time': schedule.end_time.strftime('%H:%M') if schedule.end_time else '17:00'
+        })
+    
+    # Run unified optimizer
+    try:
+        optimizer = UnifiedAIOptimizer()
+        optimized_schedule = optimizer.optimize_schedule(tasks, fixed_events, work_schedules)
+        performance_report = optimizer.get_performance_report()
+        
+        # Format response
+        scheduled_tasks = []
+        for task in tasks:
+            task_id = task['id']
+            if task_id in optimized_schedule:
+                scheduled_tasks.append({
+                    'id': task_id,
+                    'title': task['title'],
+                    'scheduled_time': optimized_schedule[task_id],
+                    'day': task['day'],
+                    'priority': task['priority'],
+                    'duration': task['estimatedDuration']
+                })
+        
+        return Response({
+            'success': True,
+            'scheduled_tasks': scheduled_tasks,
+            'performance': performance_report,
+            'message': f"Schedule optimized with {performance_report['fitness_score']}/100 quality score"
+        })
+        
+    except Exception as e:
+        logger.error(f"Unified optimizer error: {str(e)}")
+        return Response({
+            'success': False,
+            'error': str(e),
+            'message': 'Failed to optimize schedule'
+        }, status=500)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

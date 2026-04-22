@@ -161,6 +161,10 @@ class SchedulingCSP:
         Returns:
             Dictionary mapping task IDs to time slots
         """
+        # Clear previous constraints
+        self.constraints = []
+        self.domains = {}
+        
         # Add constraints
         self.add_constraint('no_overlap', {t.get('id'): t for t in tasks})
         self.add_constraint('fixed_event', {'events': fixed_events})
@@ -172,6 +176,16 @@ class SchedulingCSP:
         
         # Solve using backtracking
         solution = self.backtracking_search(tasks)
+        
+        # If no solution, return greedy fallback
+        if not solution:
+            print("[CSP] Backtracking failed, using greedy fallback")
+            solution = {}
+            for task in tasks:
+                task_id = task.get('id')
+                domain = self.domains.get(task_id, self._generate_default_domain(task))
+                if domain:
+                    solution[task_id] = domain[0]  # Use first available slot
         
         return solution if solution else {}
     

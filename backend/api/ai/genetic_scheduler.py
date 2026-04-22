@@ -24,6 +24,8 @@ class GeneticScheduler:
         self.mutation_rate = mutation_rate
         self.best_schedule = None
         self.best_fitness = 0.0
+        self.convergence_threshold = 99.0  # Target for early stopping
+        self.elite_size = max(2, population_size // 10)  # Elitism
         
     def optimize_schedule(self, tasks: List[Dict], fixed_events: List[Dict], 
                          work_schedules: List[Dict]) -> Tuple[Dict, float]:
@@ -53,8 +55,13 @@ class GeneticScheduler:
                 self.best_fitness = fitness_scores[max_fitness_idx]
                 self.best_schedule = population[max_fitness_idx].copy()
             
-            # Early stopping if perfect solution found
-            if self.best_fitness >= 95.0:
+            # Elitism: preserve best solutions
+            elite_indices = sorted(range(len(fitness_scores)), key=lambda i: fitness_scores[i], reverse=True)[:self.elite_size]
+            elite_population = [population[i].copy() for i in elite_indices]
+            
+            # Early stopping if near-perfect solution found
+            if self.best_fitness >= self.convergence_threshold:
+                print(f"   Genetic: Early convergence at generation {generation} (fitness: {self.best_fitness:.1f})")
                 break
             
             # Selection
@@ -66,8 +73,8 @@ class GeneticScheduler:
             # Mutation
             offspring = self._mutation(offspring, tasks, fixed_events, work_schedules)
             
-            # New population
-            population = offspring
+            # New population with elitism
+            population = elite_population + offspring[:self.population_size - self.elite_size]
         
         return self.best_schedule, self.best_fitness
     
@@ -101,8 +108,9 @@ class GeneticScheduler:
         """
         score = 100.0
         
-        # Penalty for constraint violations
+        # Penalty for constraint violations (stricter penalties for 100% target)
         conflict_penalty = 0
+        violation_count = 0
         
         # Check fixed event conflicts
         for task in tasks:
@@ -121,7 +129,8 @@ class GeneticScheduler:
                 
                 if self._times_overlap(task_time, task_duration, 
                                       event.get('time'), event.get('duration', 60)):
-                    conflict_penalty += 30  # Heavy penalty
+                    conflict_penalty += 40  # Heavier penalty for 100% target
+                    violation_count += 1
             
             # Check against work schedules
             for work in work_schedules:
@@ -133,7 +142,8 @@ class GeneticScheduler:
                 work_duration = self._time_to_minutes(work_end) - self._time_to_minutes(work_start)
                 
                 if self._times_overlap(task_time, task_duration, work_start, work_duration):
-                    conflict_penalty += 25  # Heavy penalty
+                    conflict_penalty += 35  # Heavier penalty for 100% target
+                    violation_count += 1
         
         # Check task-task overlaps
         task_times = {}
@@ -153,9 +163,14 @@ class GeneticScheduler:
                 for j in range(i + 1, len(times)):
                     if self._times_overlap(times[i]['time'], times[i]['duration'],
                                           times[j]['time'], times[j]['duration']):
-                        conflict_penalty += 20  # Heavy penalty
+                        conflict_penalty += 30  # Heavier penalty for 100% target
+                        violation_count += 1
         
         score -= conflict_penalty
+        
+        # Additional penalty for any violations (must be 0 for 100%)
+        if violation_count > 0:
+            score -= violation_count * 10
         
         # Reward priority-time alignment
         alignment_bonus = 0
