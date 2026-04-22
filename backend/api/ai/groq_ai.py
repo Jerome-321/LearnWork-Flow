@@ -315,7 +315,7 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
     if fixed_event_conflicts:
         fixed_event = fixed_event_conflicts[0]
         context_prefix = f"{context_message} " if context_message else ""
-        analysis = f"{context_prefix}⚠️ Schedule Conflict: Your '{task_title}' conflicts with FIXED EVENT '{fixed_event['title']}' at {format_12h(fixed_event['time'])}. This event cannot be moved."
+        analysis = f"{context_prefix}FIXED EVENT CONFLICT: Your '{task_title}' conflicts with FIXED EVENT '{fixed_event['title']}' at {format_12h(fixed_event['time'])}. This event cannot be moved."
         
         # Build work schedule summary for context
         work_schedule_summary = []
@@ -332,17 +332,17 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
         
         return {
             "type": "fixed_conflict",
-            "analysis_step": "Conflict with Fixed Event Detected",
+            "analysis_step": "CRITICAL: Conflict with Fixed Event Detected",
             "conflict_with_fixed": fixed_event['title'],
             "conflict_time": format_12h(fixed_event['time']),
             "task": task_title,
             "priority": task_priority,
             "scheduled_time": format_12h(due_time),
             "suggested_time": alternative_time.get('suggested_time', '14:00'),
-            "reason": analysis + f" Rescheduling to {format_12h(alternative_time.get('suggested_time', '14:00'))} to avoid fixed event." + (f" {context_message}" if context_message and not context_message in analysis else ""),
-            "estimated_duration": "1–2 hours",
+            "reason": analysis + f" MUST RESCHEDULE to {format_12h(alternative_time.get('suggested_time', '14:00'))} to avoid fixed event." + (f" {context_message}" if context_message and not context_message in analysis else ""),
+            "estimated_duration": "1-2 hours",
             "work_schedules": work_schedule_summary,
-            "tip": "⚠️ Fixed events (exams, meetings, birthdays, appointments) cannot be moved. Other tasks must work around them.",
+            "tip": "CRITICAL: Fixed events (exams, meetings, birthdays, appointments) cannot be moved. Other tasks must work around them.",
             "context_detected": context_message,
             "should_mark_fixed": task_context.get('should_be_fixed', False)
         }
@@ -351,7 +351,16 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
     if task_conflicts:
         conflict_task = task_conflicts[0]
         context_prefix = f"{context_message} " if context_message else ""
-        analysis = f"{context_prefix}⚠️ Schedule Conflict: Your '{task_title}' ({task_priority} priority) overlaps with '{conflict_task['title']}' ({conflict_task['priority']} priority) at {format_12h(conflict_task['time'])}."
+        
+        # Priority-aware conflict resolution
+        if task_priority == 'high' and conflict_task['priority'] in ['medium', 'low']:
+            priority_note = f" Your HIGH-priority task should take precedence over the {conflict_task['priority']}-priority '{conflict_task['title']}'."
+        elif task_priority == 'low' and conflict_task['priority'] in ['high', 'critical']:
+            priority_note = f" The {conflict_task['priority']}-priority '{conflict_task['title']}' should take precedence over your low-priority task."
+        else:
+            priority_note = f" Both tasks have similar priority levels ({task_priority} vs {conflict_task['priority']})."
+        
+        analysis = f"{context_prefix}TASK CONFLICT: Your '{task_title}' ({task_priority} priority) overlaps with '{conflict_task['title']}' ({conflict_task['priority']} priority) at {format_12h(conflict_task['time'])}.{priority_note}"
         
         # Build work schedule summary for context
         work_schedule_summary = []
@@ -368,21 +377,25 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
         if len(same_day_tasks) > 1:
             other_tasks_info = f" You also have {len(same_day_tasks)-1} other task(s) scheduled today."
         
+        # Find alternative considering priority
+        alternative = _find_alternative_by_priority(due_day, same_day_tasks, task_priority, work_schedules)
+        
         return {
             "type": "conflict",
-            "analysis_step": "Task Overlap Detected",
+            "analysis_step": "Task Overlap Detected - Priority-Based Resolution",
             "conflict_with_task": conflict_task['title'],
             "conflict_time": format_12h(conflict_task['time']),
             "conflict_priority": conflict_task['priority'],
             "task": task_title,
             "priority": task_priority,
             "scheduled_time": format_12h(due_time),
-            "suggested_time": _find_alternative_slots(due_day, same_day_tasks, task_priority).get('suggested_time', '14:00'),
-            "reason": analysis + other_tasks_info + " I recommend rescheduling to avoid time overlap and maintain productivity.",
-            "estimated_duration": "1–2 hours",
+            "suggested_time": alternative.get('suggested_time', '14:00'),
+            "reason": analysis + other_tasks_info + f" Rescheduling to {format_12h(alternative.get('suggested_time', '14:00'))} to avoid overlap. {alternative.get('reason', '')}",
+            "estimated_duration": "1-2 hours",
             "work_schedules": work_schedule_summary,
             "same_day_tasks": len(same_day_tasks),
-            "tip": _get_productivity_tip(task_priority)
+            "tip": _get_productivity_tip(task_priority),
+            "priority_guidance": priority_note
         }
 
     # ===== STEP 2: Check task vs work schedules =====
@@ -403,7 +416,10 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
     if work_schedule_conflicts:
         conflict_info = work_schedule_conflicts[0]
         context_prefix = f"{context_message} " if context_message else ""
-        analysis = f"{context_prefix}⚠️ Work Schedule Conflict: Your '{task_title}' conflicts with '{conflict_info['schedule_title']}' ({conflict_info['schedule_start']} – {conflict_info['schedule_end']})."
+        
+        # Build detailed work schedule awareness message
+        work_details = f"WORK SCHEDULE CONFLICT: Your '{task_title}' at {format_12h(due_time)} conflicts with '{conflict_info['schedule_title']}' ({conflict_info['schedule_start']} - {conflict_info['schedule_end']})."
+        analysis = f"{context_prefix}{work_details} You are scheduled to work during this time and cannot complete academic tasks."
         
         # Build work schedule summary (show all for context)
         work_schedule_summary = []
@@ -415,19 +431,23 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
                     'end_time': format_12h(schedule.get('end_time', '')),
                 })
         
+        # Find time that avoids work schedule
+        alternative = _find_alternative_avoiding_work(due_day, work_schedules, task_priority)
+        
         return {
             "type": "conflict",
-            "analysis_step": "Task vs Work Schedule Conflict Detected",
+            "analysis_step": "Work Schedule Conflict Detected",
             "conflict_with": conflict_info['schedule_title'],
-            "work_schedule_time": f"{conflict_info['schedule_start']} – {conflict_info['schedule_end']}",
+            "work_schedule_time": f"{conflict_info['schedule_start']} - {conflict_info['schedule_end']}",
             "task": task_title,
             "priority": task_priority,
             "scheduled_time": format_12h(due_time),
-            "suggested_time": _find_alternative_slots(due_day, [], task_priority).get('suggested_time', '14:00'),
-            "reason": analysis + " Rescheduling to an available slot.",
-            "estimated_duration": "1–2 hours",
+            "suggested_time": alternative.get('suggested_time', '14:00'),
+            "reason": analysis + f" Rescheduling to {format_12h(alternative.get('suggested_time', '14:00'))} to avoid work hours. {alternative.get('reason', '')}",
+            "estimated_duration": "1-2 hours",
             "work_schedules": work_schedule_summary,
-            "tip": _get_productivity_tip(task_priority)
+            "tip": _get_productivity_tip(task_priority),
+            "work_conflict_details": f"You work {conflict_info['schedule_start']}-{conflict_info['schedule_end']} on {due_day}s"
         }
 
     # ===== STEP 3: Check if there are tasks on same day (even without overlap) =====
@@ -557,6 +577,127 @@ def _get_productivity_tip(priority):
     }
     
     return tips.get(priority, tips['medium'])
+
+
+def _find_alternative_by_priority(day, same_day_tasks, priority, work_schedules):
+    """Find alternative time slot based on task priority and existing schedule"""
+    # Priority-based time slots (ordered by preference)
+    priority_slots = {
+        'critical': ['09:00', '10:00', '08:00', '11:00', '14:00'],
+        'high': ['09:00', '10:00', '11:00', '14:00', '15:00'],
+        'medium': ['14:00', '15:00', '16:00', '10:00', '11:00'],
+        'low': ['17:00', '18:00', '19:00', '16:00', '15:00']
+    }
+    
+    candidate_times = priority_slots.get(priority, priority_slots['medium'])
+    
+    def time_to_minutes(time_str):
+        h, m = time_str.split(':')
+        return int(h) * 60 + int(m)
+    
+    # Get occupied times
+    occupied = []
+    for task in same_day_tasks:
+        occupied.append(time_to_minutes(task['time']))
+    
+    # Get work schedule times
+    work_times = []
+    for schedule in work_schedules:
+        if day in schedule.get('work_days', []):
+            work_times.append({
+                'start': time_to_minutes(schedule.get('start_time', '09:00')),
+                'end': time_to_minutes(schedule.get('end_time', '17:00'))
+            })
+    
+    # Find first available slot
+    for candidate in candidate_times:
+        candidate_minutes = time_to_minutes(candidate)
+        
+        # Check if occupied by other tasks
+        if candidate_minutes in occupied:
+            continue
+        
+        # Check if conflicts with work
+        conflicts_work = False
+        for work in work_times:
+            if work['start'] <= candidate_minutes < work['end']:
+                conflicts_work = True
+                break
+        
+        if not conflicts_work:
+            time_desc = "morning" if candidate_minutes < 720 else "afternoon" if candidate_minutes < 1020 else "evening"
+            priority_desc = "Critical tasks need your peak focus time" if priority == 'critical' else \
+                           "High-priority tasks work best in focused time blocks" if priority == 'high' else \
+                           "Medium-priority tasks fit well in steady productivity hours" if priority == 'medium' else \
+                           "Low-priority tasks can be scheduled flexibly"
+            
+            return {
+                'suggested_time': candidate,
+                'reason': f'{priority_desc}. This {time_desc} slot is optimal for your {priority}-priority task.'
+            }
+    
+    # Fallback
+    return {
+        'suggested_time': '20:00',
+        'reason': 'Evening slot available'
+    }
+
+
+def _find_alternative_avoiding_work(day, work_schedules, priority):
+    """Find alternative time slot that avoids work schedules"""
+    # Get all work times on this day
+    work_times = []
+    for schedule in work_schedules:
+        if day in schedule.get('work_days', []):
+            work_times.append({
+                'start': schedule.get('start_time', ''),
+                'end': schedule.get('end_time', '')
+            })
+    
+    # Priority-based time slots
+    priority_slots = {
+        'high': ['09:00', '10:00', '11:00', '08:00', '07:00'],
+        'medium': ['14:00', '15:00', '13:00', '16:00', '10:00'],
+        'low': ['17:00', '18:00', '19:00', '20:00', '16:00']
+    }
+    
+    candidate_times = priority_slots.get(priority, priority_slots['medium'])
+    
+    def time_to_minutes(time_str):
+        h, m = time_str.split(':')
+        return int(h) * 60 + int(m)
+    
+    # Find first slot that doesn't conflict with work
+    for candidate in candidate_times:
+        conflicts = False
+        candidate_minutes = time_to_minutes(candidate)
+        
+        for work in work_times:
+            work_start = time_to_minutes(work['start'])
+            work_end = time_to_minutes(work['end'])
+            
+            # Handle overnight shifts
+            if work_end < work_start:
+                if candidate_minutes >= work_start or candidate_minutes < work_end:
+                    conflicts = True
+                    break
+            else:
+                if work_start <= candidate_minutes < work_end:
+                    conflicts = True
+                    break
+        
+        if not conflicts:
+            time_desc = "morning" if candidate_minutes < 720 else "afternoon" if candidate_minutes < 1020 else "evening"
+            return {
+                'suggested_time': candidate,
+                'reason': f'This {time_desc} slot avoids your work schedule and suits your {priority}-priority task'
+            }
+    
+    # Fallback
+    return {
+        'suggested_time': '20:00',
+        'reason': 'Evening slot after work hours'
+    }
 
 
 def _find_alternative_avoiding_fixed(day, fixed_conflicts, all_tasks, priority):
