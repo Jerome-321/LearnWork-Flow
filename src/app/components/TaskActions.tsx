@@ -141,28 +141,26 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
         if (response.ok) {
           const aiData = await response.json();
           
-          // Check if AI suggests a different time
-          if (aiData.type === "conflict" || aiData.type === "fixed_conflict") {
-            setAiSuggestion({
-              ...aiData,
-              suggested_time: aiData.suggested_time || formData.dueTime || "18:00",
-              priority: aiData.priority || formData.priority,
-              reason: aiData.reason || "AI detected a scheduling conflict.",
-            });
-            
-            // Store pending update
-            setPendingTaskPayload({
-              title: formData.title,
-              description: description,
-              category: formData.category,
-              priority: formData.priority,
-              dueDate: dueDateTime,
-            });
-            
-            setIsAnalyzingSubmit(false);
-            setShowAiModal(true);
-            return; // Don't save yet, wait for user decision
-          }
+          // Show AI modal for any AI response (conflict, awareness, or suggestion)
+          setAiSuggestion({
+            ...aiData,
+            suggested_time: aiData.suggested_time || formData.dueTime || "18:00",
+            priority: aiData.priority || formData.priority,
+            reason: aiData.reason || "AI detected a scheduling conflict.",
+          });
+          
+          // Store pending update
+          setPendingTaskPayload({
+            title: formData.title,
+            description: description,
+            category: formData.category,
+            priority: formData.priority,
+            dueDate: dueDateTime,
+          });
+          
+          setIsAnalyzingSubmit(false);
+          setShowAiModal(true);
+          return; // Don't save yet, wait for user decision
         }
       } catch (err) {
         console.error("Error during AI analysis:", err);
