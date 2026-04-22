@@ -395,8 +395,7 @@ export function useTaskAPI() {
       // Update UI immediately
       setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
 
-      // Wait for UI to update before fading loading
-      await new Promise(resolve => setTimeout(resolve, 500));
+      triggerReloadWithLoading();
 
     } catch (error) {
       console.error("Error updating task:", error);
@@ -439,8 +438,7 @@ export function useTaskAPI() {
       // Update UI immediately
       setTasks(prev => prev.filter(t => t.id !== id));
 
-      // Wait for UI to update before fading loading
-      await new Promise(resolve => setTimeout(resolve, 500));
+      triggerReloadWithLoading();
 
     } catch (error) {
       console.error("Error deleting task:", error);
