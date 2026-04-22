@@ -1,10 +1,11 @@
 import { useState, useEffect, type SyntheticEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, Trophy, Flame, X } from "lucide-react";
+import { Sparkles, Trophy, Flame, X, Users } from "lucide-react";
 import { useTaskAPI } from "../hooks/useTaskAPI";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
+import { PetTab } from "./PetTab";
 
 const POSITION_STORAGE_KEY = "LearnWorkFlowPetPosition";
 
@@ -19,6 +20,7 @@ const getDefaultPosition = () => {
 export function VirtualPet() {
   const { progress } = useTaskAPI();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartTime, setDragStartTime] = useState(0);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(() => {
@@ -236,50 +238,187 @@ export function VirtualPet() {
   if (!position) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        className="fixed z-[60] cursor-grab active:cursor-grabbing"
-        style={{
-          left: position.x,
-          top: position.y,
-          touchAction: 'none',
-          userSelect: 'none',
-        }}
-        drag
-        dragMomentum={false}
-        dragElastic={0}
-        dragConstraints={{
-          left: 0,
-          right: 0,
-          top: 0,
-          bottom: 0,
-        }}
-        onDragStart={handleDragStart}
-        onDrag={handleDrag}
-        onDragEnd={handleDragEnd}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 260, damping: 20 }}
-      >
-        {isExpanded ? (
-          <Card className="w-64 sm:w-72 overflow-hidden shadow-xl border-2">
-            <div className="relative bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900 dark:to-neutral-800 p-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 top-2 h-6 w-6"
-                onClick={() => setIsExpanded(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+    <>
+      <AnimatePresence>
+        <motion.div
+          className="fixed z-[60] cursor-grab active:cursor-grabbing"
+          style={{
+            left: position.x,
+            top: position.y,
+            touchAction: 'none',
+            userSelect: 'none',
+          }}
+          drag
+          dragMomentum={false}
+          dragElastic={0}
+          dragConstraints={{
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+          }}
+          onDragStart={handleDragStart}
+          onDrag={handleDrag}
+          onDragEnd={handleDragEnd}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
+        >
+          {isExpanded ? (
+            <Card className="w-64 sm:w-72 overflow-hidden shadow-xl border-2">
+              <div className="relative bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900 dark:to-neutral-800 p-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-2 h-6 w-6"
+                  onClick={() => setIsExpanded(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
 
-              <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center">
+                  <motion.div
+                    className="relative h-24 w-24 sm:h-32 sm:w-32 mb-2"
+                    animate={{
+                      y: [0, -8, 0],
+                      scale: [1, 1.02, 1],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  >
+                    <img
+                      key={progressData.petLevel}
+                      src={petImage}
+                      alt={getPetName()}
+                      onError={onPetImageError}
+                      className="h-full w-full rounded-lg object-contain"
+                      style={{ maxWidth: "100%", maxHeight: "100%", display: "block" }}
+                    />
+
+                    {progressData.petLevel >= 5 && (
+                      <motion.div
+                        className="absolute -top-2 -right-2"
+                        animate={{
+                          rotate: [0, 360],
+                          scale: [1, 1.2, 1],
+                        }}
+                        transition={{
+                          duration: 3,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
+                      >
+                        <Sparkles className="h-6 w-6 text-yellow-500 fill-yellow-500" />
+                      </motion.div>
+                    )}
+                  </motion.div>
+
+                  <h3 className="font-semibold text-base mt-2">
+                    {getPetName()}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Level {currentLevel}
+                  </p>
+
+                  <div className="mt-3 w-full bg-white/50 dark:bg-black/20 rounded-lg p-2 border border-border/50">
+                    <p className="text-xs text-center leading-relaxed">
+                      "{getPetMessage()}"
+                    </p>
+                  </div>
+
+                  <div className="mt-3 w-full">
+                    <div className="mb-1.5 flex justify-between text-xs">
+                      <span className="text-muted-foreground">Next Evolution</span>
+                      <span className="font-medium">{progressData.totalPoints} / {nextMilestone}</span>
+                    </div>
+                    <Progress value={progressToNext} className="h-2" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 p-4 bg-card">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                  onClick={() => {
+                    setIsExpanded(false);
+                    setShowLeaderboard(true);
+                  }}
+                >
+                  <Users className="h-4 w-4" />
+                  <span className="text-sm font-medium">View Leaderboard</span>
+                </Button>
+
+                <div className="flex items-center justify-between rounded-md bg-secondary p-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    <span className="text-sm font-medium">Points</span>
+                  </div>
+                  <span className="font-semibold">{progressData.totalPoints}</span>
+                </div>
+
+                <div className="flex items-center justify-between rounded-md bg-secondary p-3">
+                  <div className="flex items-center gap-2">
+                    <Flame className="h-4 w-4 text-destructive" />
+                    <span className="text-sm font-medium">Streak</span>
+                  </div>
+                  <span className="font-semibold">{progressData.currentStreak} days</span>
+                </div>
+
+                <div className="flex items-center justify-between rounded-md bg-secondary p-3">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-4 w-4" />
+                    <span className="text-sm font-medium">Completed</span>
+                  </div>
+                  <span className="font-semibold">{progressData.tasksCompleted}</span>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <motion.button
+              className="relative flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br from-white to-neutral-100 dark:from-neutral-800 dark:to-neutral-900 shadow-lg border-2 border-border hover:shadow-xl transition-shadow"
+              onClick={() => !isDragging && setIsExpanded(true)}
+              whileHover={{ scale: isDragging ? 1 : 1.1 }}
+              whileTap={{ scale: isDragging ? 1 : 0.95 }}
+            >
+              <motion.img
+                key={progressData.petLevel}
+                src={petImage}
+                alt={getPetName()}
+                onError={onPetImageError}
+                className="h-14 w-14 sm:h-16 sm:w-16 object-contain filter drop-shadow-md"
+                style={{ maxWidth: "100%", maxHeight: "100%", display: "block" }}
+                animate={{
+                  rotate: isDragging ? 0 : [0, 10, -10, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: isDragging ? 0 : Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+              
+              {progressData.currentStreak > 0 && (
                 <motion.div
-                  className="relative h-24 w-24 sm:h-32 sm:w-32 mb-2"
+                  className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground border-2 border-background shadow-md"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                >
+                  {progressData.currentStreak}
+                </motion.div>
+              )}
+
+              {progressData.petLevel >= 5 && (
+                <motion.div
+                  className="absolute -top-1 -left-1"
                   animate={{
-                    y: [0, -8, 0],
-                    scale: [1, 1.02, 1],
+                    scale: [1, 1.3, 1],
+                    opacity: [0.7, 1, 0.7],
                   }}
                   transition={{
                     duration: 2,
@@ -287,136 +426,58 @@ export function VirtualPet() {
                     ease: "easeInOut",
                   }}
                 >
-                  <img
-                    key={progressData.petLevel}
-                    src={petImage}
-                    alt={getPetName()}
-                    onError={onPetImageError}
-                    className="h-full w-full rounded-lg object-contain"
-                    style={{ maxWidth: "100%", maxHeight: "100%", display: "block" }}
-                  />
-
-                  {progressData.petLevel >= 5 && (
-                    <motion.div
-                      className="absolute -top-2 -right-2"
-                      animate={{
-                        rotate: [0, 360],
-                        scale: [1, 1.2, 1],
-                      }}
-                      transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "linear",
-                      }}
-                    >
-                      <Sparkles className="h-6 w-6 text-yellow-500 fill-yellow-500" />
-                    </motion.div>
-                  )}
+                  <Sparkles className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                 </motion.div>
+              )}
+            </motion.button>
+          )}
+        </motion.div>
+      </AnimatePresence>
 
-                <h3 className="font-semibold text-base mt-2">
-                  {getPetName()}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Level {currentLevel}
-                </p>
-
-                <div className="mt-3 w-full bg-white/50 dark:bg-black/20 rounded-lg p-2 border border-border/50">
-                  <p className="text-xs text-center leading-relaxed">
-                    "{getPetMessage()}"
-                  </p>
-                </div>
-
-                <div className="mt-3 w-full">
-                  <div className="mb-1.5 flex justify-between text-xs">
-                    <span className="text-muted-foreground">Next Evolution</span>
-                    <span className="font-medium">{progressData.totalPoints} / {nextMilestone}</span>
-                  </div>
-                  <Progress value={progressToNext} className="h-2" />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2 p-4 bg-card">
-              <div className="flex items-center justify-between rounded-md bg-secondary p-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  <span className="text-sm font-medium">Points</span>
-                </div>
-                <span className="font-semibold">{progressData.totalPoints}</span>
-              </div>
-
-              <div className="flex items-center justify-between rounded-md bg-secondary p-3">
-                <div className="flex items-center gap-2">
-                  <Flame className="h-4 w-4 text-destructive" />
-                  <span className="text-sm font-medium">Streak</span>
-                </div>
-                <span className="font-semibold">{progressData.currentStreak} days</span>
-              </div>
-
-              <div className="flex items-center justify-between rounded-md bg-secondary p-3">
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-4 w-4" />
-                  <span className="text-sm font-medium">Completed</span>
-                </div>
-                <span className="font-semibold">{progressData.tasksCompleted}</span>
-              </div>
-            </div>
-          </Card>
-        ) : (
-          <motion.button
-            className="relative flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br from-white to-neutral-100 dark:from-neutral-800 dark:to-neutral-900 shadow-lg border-2 border-border hover:shadow-xl transition-shadow"
-            onClick={() => !isDragging && setIsExpanded(true)}
-            whileHover={{ scale: isDragging ? 1 : 1.1 }}
-            whileTap={{ scale: isDragging ? 1 : 0.95 }}
-          >
-            <motion.img
-              key={progressData.petLevel}
-              src={petImage}
-              alt={getPetName()}
-              onError={onPetImageError}
-              className="h-14 w-14 sm:h-16 sm:w-16 object-contain filter drop-shadow-md"
-              style={{ maxWidth: "100%", maxHeight: "100%", display: "block" }}
-              animate={{
-                rotate: isDragging ? 0 : [0, 10, -10, 0],
-              }}
-              transition={{
-                duration: 2,
-                repeat: isDragging ? 0 : Infinity,
-                ease: "easeInOut",
-              }}
+      {/* Leaderboard Modal */}
+      <AnimatePresence>
+        {showLeaderboard && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              className="fixed inset-0 bg-black/50 z-[70]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLeaderboard(false)}
             />
             
-            {progressData.currentStreak > 0 && (
-              <motion.div
-                className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground border-2 border-background shadow-md"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 500, damping: 15 }}
-              >
-                {progressData.currentStreak}
-              </motion.div>
-            )}
-
-            {progressData.petLevel >= 5 && (
-              <motion.div
-                className="absolute -top-1 -left-1"
-                animate={{
-                  scale: [1, 1.3, 1],
-                  opacity: [0.7, 1, 0.7],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              >
-                <Sparkles className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-              </motion.div>
-            )}
-          </motion.button>
+            {/* Leaderboard Panel */}
+            <motion.div
+              className="fixed bottom-0 right-0 top-0 w-full sm:w-[500px] md:w-[600px] lg:w-[700px] bg-background shadow-2xl z-[71] overflow-hidden"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            >
+              <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between p-4 border-b border-border bg-card">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-primary" />
+                    <h2 className="text-xl font-bold">Leaderboard</h2>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowLeaderboard(false)}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto">
+                  <PetTab />
+                </div>
+              </div>
+            </motion.div>
+          </>
         )}
-      </motion.div>
-    </AnimatePresence>
+      </AnimatePresence>
+    </>
   );
 }
