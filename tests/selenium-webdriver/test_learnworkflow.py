@@ -7,9 +7,9 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.edge.service import Service
+from selenium.webdriver.edge.options import Options
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
 import pytest
 import time
 import random
@@ -20,20 +20,28 @@ TIMEOUT = 10
 
 @pytest.fixture(scope="session")
 def driver():
-    """Setup Chrome WebDriver with options"""
-    chrome_options = Options()
-    chrome_options.add_argument("--start-maximized")
-    chrome_options.add_argument("--disable-notifications")
-    # Uncomment for headless mode
-    # chrome_options.add_argument("--headless")
+    """Setup Edge WebDriver with options"""
+    edge_options = Options()
+    edge_options.add_argument("--headless=new")
+    edge_options.add_argument("--no-sandbox")
+    edge_options.add_argument("--disable-dev-shm-usage")
+    edge_options.add_argument("--disable-gpu")
+    edge_options.add_argument("--window-size=1920,1080")
+    edge_options.add_argument("--disable-notifications")
+    edge_options.add_argument("--disable-extensions")
+    edge_options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.implicitly_wait(TIMEOUT)
-    
-    yield driver
-    
-    driver.quit()
+    try:
+        service = Service(EdgeChromiumDriverManager().install())
+        driver = webdriver.Edge(service=service, options=edge_options)
+        driver.implicitly_wait(TIMEOUT)
+        
+        yield driver
+        
+        driver.quit()
+    except Exception as e:
+        print(f"Failed to initialize Edge WebDriver: {e}")
+        pytest.skip(f"Edge WebDriver not available: {e}")
 
 @pytest.fixture(scope="session")
 def authenticated_driver(driver):
