@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { flushSync } from "react-dom";
 import { Task, UserProgress, UserSettings } from "../types/task";
 import { useAuth } from "../contexts/AuthContext";
@@ -22,6 +22,10 @@ export function useTaskAPI() {
 
   const { getAccessToken, user } = useAuth();
 
+  // Prevent re-initialization on re-render
+  const hasInitialized = useRef(false);
+  const syncDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -43,8 +47,14 @@ export function useTaskAPI() {
 
   // ========================= SYNC =========================
 
-  // Load from local storage first for instant UI
+  // Load from local storage first for instant UI (only once on mount)
   useEffect(() => {
+    // Prevent running initialization multiple times
+    if (hasInitialized.current) {
+      return;
+    }
+    hasInitialized.current = true;
+
     const loadInitialData = async () => {
       const localTasks = await OfflineStorage.getTasks();
       const localProgress = await OfflineStorage.getUserData();
@@ -52,12 +62,12 @@ export function useTaskAPI() {
       if (localTasks && localTasks.length > 0) {
         setTasks(Array.isArray(localTasks) ? localTasks : []);
         setProgress(localProgress);
-        setLocalLoading(false);
       }
+      setLocalLoading(false);
 
       // Initialize notifications without blocking
       NotificationScheduler.initialize().then(() => {
-        if (localTasks.length > 0) {
+        if (localTasks && localTasks.length > 0) {
           NotificationScheduler.rescheduleAllTasks(localTasks).catch(err => {
             console.error('Failed to reschedule notifications:', err);
           });
@@ -75,10 +85,14 @@ export function useTaskAPI() {
 
   // Reload tasks from localStorage when window regains focus (Android back navigation)
   useEffect(() => {
-    const handleFocus = () => {
+    const handleFocus = async () => {
       console.log('Window focused - reloading tasks from localStorage');
-      const localTasks = OfflineStorage.getTasks();
-      setTasks(Array.isArray(localTasks) ? localTasks : []);
+      try {
+        const localTasks = await OfflineStorage.getTasks();
+        setTasks(Array.isArray(localTasks) ? localTasks : []);
+      } catch (err) {
+        console.error('Failed to reload tasks on focus:', err);
+      }
     };
 
     window.addEventListener('focus', handleFocus);
@@ -91,11 +105,14 @@ export function useTaskAPI() {
       console.log('Online status changed:', isOnline);
       setIsOfflineMode(!isOnline);
       if (isOnline && user) {
-        // Auto-sync when coming back online with a small delay
-        setTimeout(() => {
+        // Auto-sync when coming back online with a debounce
+        if (syncDebounceTimer.current) {
+          clearTimeout(syncDebounceTimer.current);
+        }
+        syncDebounceTimer.current = setTimeout(() => {
           console.log('Auto-syncing after coming online...');
           syncData();
-        }, 1000);
+        }, 1500);
       }
     };
 

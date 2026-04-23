@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from "react";
 import { UserProgress } from "../types/task";
 import { useAuth } from "./AuthContext";
 import { useLoading } from "./LoadingContext";
@@ -24,6 +24,10 @@ export function ProgressProvider({ children }: ProgressProviderProps) {
   const { setLoading } = useLoading();
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [loading, setLoadingState] = useState(true);
+  
+  // Track last sync to prevent excessive syncs
+  const lastSyncTime = useRef<number>(0);
+  const MIN_SYNC_INTERVAL = 30000; // 30 seconds minimum between syncs
 
   // ✅ Core function: Fetch progress from backend
   const fetchProgress = useCallback(async (showGlobal = false) => {
@@ -76,16 +80,21 @@ export function ProgressProvider({ children }: ProgressProviderProps) {
     }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ✅ Auto-sync every 30 seconds for real-time updates
+  // ✅ Auto-sync every 30 seconds for real-time updates (with debounce)
   useEffect(() => {
     if (!user) return;
 
     const interval = setInterval(() => {
-      fetchProgress();
+      const now = Date.now();
+      // Only sync if minimum interval has passed since last sync
+      if (now - lastSyncTime.current >= MIN_SYNC_INTERVAL) {
+        lastSyncTime.current = now;
+        fetchProgress();
+      }
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, fetchProgress]);
 
   const value: ProgressContextType = {
     progress,

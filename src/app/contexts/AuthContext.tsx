@@ -51,6 +51,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     setLoading(false);
+
+    // Listen for storage changes from other tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "accessToken" || e.key === "user" || e.key === "hasCompletedSchedule") {
+        console.log('Storage changed from another tab:', e.key);
+        const newToken = localStorage.getItem("accessToken");
+        const newUser = localStorage.getItem("user");
+        const newHasCompleted = localStorage.getItem("hasCompletedSchedule");
+
+        if (newToken && newUser) {
+          setSession({ access_token: newToken });
+          setUser(JSON.parse(newUser));
+          setHasCompletedSchedule(newHasCompleted === "true");
+        } else {
+          // User signed out in another tab
+          setSession(null);
+          setUser(null);
+          setHasCompletedSchedule(false);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const signIn = async (email: string, password: string) => {

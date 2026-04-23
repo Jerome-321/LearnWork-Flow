@@ -9,8 +9,24 @@ import { useTaskAPI } from "../hooks/useTaskAPI";
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  
+  // Restore UI state from localStorage on mount
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("selectedTaskId") || null;
+    } catch {
+      return null;
+    }
+  });
+  
+  const [searchQuery, setSearchQuery] = useState(() => {
+    try {
+      return localStorage.getItem("searchQuery") || "";
+    } catch {
+      return "";
+    }
+  });
+  
   const [showAddTask, setShowAddTask] = useState(false);
 
   const { tasks, loading, refreshFromLocalStorage } = useTaskAPI();
@@ -27,6 +43,32 @@ export function Layout() {
       return () => window.removeEventListener("resize", handleResize);
     }
   }, []);
+
+  // Persist selectedTaskId to localStorage
+  useEffect(() => {
+    try {
+      if (selectedTaskId) {
+        localStorage.setItem("selectedTaskId", selectedTaskId);
+      } else {
+        localStorage.removeItem("selectedTaskId");
+      }
+    } catch (err) {
+      console.error('Failed to save selectedTaskId:', err);
+    }
+  }, [selectedTaskId]);
+
+  // Persist searchQuery to localStorage
+  useEffect(() => {
+    try {
+      if (searchQuery) {
+        localStorage.setItem("searchQuery", searchQuery);
+      } else {
+        localStorage.removeItem("searchQuery");
+      }
+    } catch (err) {
+      console.error('Failed to save searchQuery:', err);
+    }
+  }, [searchQuery]);
   
   // Find the selected task
   const selectedTask = selectedTaskId ? safeTasks.find(t => t.id === selectedTaskId) : null;
