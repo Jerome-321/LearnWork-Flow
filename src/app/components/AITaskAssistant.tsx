@@ -31,6 +31,33 @@ interface AISuggestion {
   priority: TaskPriority;
   timeOfDay: "morning" | "afternoon" | "evening";
   productivity_score?: number;
+  // Q1-Q10 New fields
+  type?: string; // 'fixed_vs_work_conflict', 'conflict', 'suggestion', etc.
+  conflict_type?: string;
+  professional_significance?: string;
+  should_mark_fixed?: boolean;
+  leave_request_draft?: string;
+  resolution_options?: Array<{
+    option: string;
+    action: string;
+    preserves: string;
+    sacrifices: string;
+    trade_off: string;
+    feasibility_score: number;
+    emotional_impact?: string;
+    income_impact?: string;
+  }>;
+  urgency_upgrade?: boolean;
+  original_priority?: string;
+  new_priority?: string;
+  deadline_impact?: {
+    hours_until_deadline: number;
+    free_hours_if_proceed: number;
+    severity: string;
+  };
+  context_detected?: string;
+  needs_clarification?: boolean;
+  clarification_question?: string;
 }
 
 interface AITaskAssistantProps {
@@ -498,24 +525,72 @@ export function AITaskAssistant({
               <>
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
                   <p className="font-semibold text-sm text-red-700 dark:text-red-300">
-                    Conflict Detected
+                    Schedule Conflict Detected
+                  </p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 mt-2">
+                    <strong>Task:</strong> {conflictWarning.taskTitle}
                   </p>
                   <p className="text-xs text-slate-700 dark:text-slate-300">
-                    Task: {conflictWarning.taskTitle}
+                    <strong>Time:</strong> {conflictWarning.taskTime}
+                  </p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 mt-2">
+                    <strong>Conflicts with:</strong> {conflictWarning.conflictWith}
                   </p>
                   <p className="text-xs text-slate-700 dark:text-slate-300">
-                    Time: {conflictWarning.taskTime}
+                    <strong>Time:</strong> {conflictWarning.conflictTime}
                   </p>
-                  <p className="text-xs text-slate-700 dark:text-slate-300">
-                    Conflicts with: {conflictWarning.conflictWith}
-                  </p>
-                  <p className="text-xs text-slate-700 dark:text-slate-300">
-                    Time: {conflictWarning.conflictTime}
-                  </p>
-                  <div className="mt-2 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <p className="font-semibold text-xs">Suggestion</p>
-                    <p className="text-xs">Move to {formatTime12Hour(conflictWarning.suggestedTime)}</p>
-                  </div>
+                  
+                  {/* Show resolution options if available */}
+                  {suggestion?.resolution_options && suggestion.resolution_options.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Resolution Options:</p>
+                      {suggestion.resolution_options.map((option, idx) => (
+                        <div key={idx} className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="font-semibold text-xs">Option {option.option}</p>
+                            <span className="text-xs text-green-600 dark:text-green-400">{option.feasibility_score}% feasible</span>
+                          </div>
+                          <p className="text-xs text-slate-700 dark:text-slate-300">{option.action}</p>
+                          <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                            <span className="text-green-600">✓ Preserves:</span> {option.preserves}<br/>
+                            <span className="text-red-600">✗ Sacrifices:</span> {option.sacrifices}
+                          </div>
+                          {option.emotional_impact && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Impact: {option.emotional_impact}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-2 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <p className="font-semibold text-xs">Suggestion</p>
+                      <p className="text-xs">Move to {formatTime12Hour(conflictWarning.suggestedTime)}</p>
+                    </div>
+                  )}
+                  
+                  {/* Show leave request draft if available */}
+                  {suggestion?.leave_request_draft && (
+                    <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                      <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1">Leave Request Draft:</p>
+                      <pre className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{suggestion.leave_request_draft}</pre>
+                    </div>
+                  )}
+                  
+                  {/* Show deadline impact if available */}
+                  {suggestion?.deadline_impact && (
+                    <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-700">
+                      <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-300">Deadline Impact:</p>
+                      <p className="text-xs text-slate-700 dark:text-slate-300">
+                        {suggestion.deadline_impact.hours_until_deadline} hours until deadline
+                      </p>
+                      <p className="text-xs text-slate-700 dark:text-slate-300">
+                        {suggestion.deadline_impact.free_hours_if_proceed} free hours remaining if you proceed
+                      </p>
+                      <p className="text-xs font-semibold text-red-600 dark:text-red-400 mt-1">
+                        Severity: {suggestion.deadline_impact.severity.toUpperCase()}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Also render the suggestion if available */}
@@ -535,12 +610,43 @@ export function AITaskAssistant({
                         {suggestion.estimated_duration}
                       </span>
                     </div>
+                    
+                    {/* Show urgency upgrade if applicable */}
+                    {suggestion.urgency_upgrade && (
+                      <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded p-2">
+                        <p className="text-xs font-semibold text-red-700 dark:text-red-300">
+                          Priority Upgraded: {suggestion.original_priority?.toUpperCase()} → {suggestion.new_priority?.toUpperCase()}
+                        </p>
+                        <p className="text-xs text-slate-700 dark:text-slate-300">Deadline approaching - task urgency increased</p>
+                      </div>
+                    )}
+                    
+                    {/* Show context detection */}
+                    {suggestion.context_detected && (
+                      <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded p-2">
+                        <p className="text-xs text-blue-700 dark:text-blue-300">{suggestion.context_detected}</p>
+                      </div>
+                    )}
+                    
                     <p className="text-xs text-slate-700 dark:text-slate-300">{suggestion.reason}</p>
                   </div>
                 )}
               </>
             ) : suggestion ? (
               <>
+                {/* Show clarification question if needed */}
+                {suggestion.needs_clarification && suggestion.clarification_question && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lightbulb className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                      <span className="text-xs font-semibold text-yellow-700 dark:text-yellow-300">
+                        Clarification Needed
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-700 dark:text-slate-300">{suggestion.clarification_question}</p>
+                  </div>
+                )}
+                
                 {/* Explanation */}
                 <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                   <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
