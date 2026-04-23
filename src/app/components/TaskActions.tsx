@@ -483,7 +483,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
         <Dialog open={showAiModal} onOpenChange={setShowAiModal}>
           <DialogContent className="max-w-md p-6">
             <DialogHeader className="mb-4">
-              <DialogTitle className="text-xl font-bold">AI Scheduling Suggestion</DialogTitle>
+              <DialogTitle className="text-xl font-bold">Scheduling Suggestion</DialogTitle>
             </DialogHeader>
             {aiSuggestion && (
               <div className="space-y-4">
@@ -733,7 +733,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
       <Dialog open={showAiModal} onOpenChange={setShowAiModal}>
         <DialogContent className="max-w-md p-6">
           <DialogHeader className="mb-4">
-            <DialogTitle className="text-xl font-bold">AI Scheduling Suggestion</DialogTitle>
+            <DialogTitle className="text-xl font-bold">Scheduling Suggestion</DialogTitle>
           </DialogHeader>
           {aiSuggestion && (
             <div className="space-y-4">
