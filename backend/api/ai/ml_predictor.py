@@ -192,6 +192,102 @@ class ProductivityPredictor:
         # For now, use pre-trained weights based on general productivity research
         pass
     
+    def predict_from_user_behavior_history(self, user, time_slot: str, priority: str, day: str) -> float:
+        """
+        Enhanced prediction using user's BehaviorHistory (Q6 cross-session adaptation).
+        Falls back to base prediction if no history exists.
+        
+        Args:
+            user: Django user object
+            time_slot: Time in HH:MM format
+            priority: Task priority
+            day: Day of week
+            
+        Returns:
+            Productivity score weighted by user history (0-100)
+        """
+        try:
+            from api.models import BehaviorHistory
+            
+            # Try to get user's historical behavior for this slot
+            behavior = BehaviorHistory.objects.filter(
+                user=user,
+                day_of_week=day,
+                time_slot=time_slot
+            ).first()
+            
+            if behavior and behavior.update_count >= 5:
+                # User has enough historical data - use it (weight 70%)
+                # Mix historical data with base prediction (30%) for stability
+                base_score = self.predict_productivity_score(time_slot, priority, day)
+                historical_score = behavior.historical_productivity_score
+                ml_confidence = behavior.ml_confidence_score
+                
+                # Blend scores weighted by ML confidence
+                blended_score = (historical_score * ml_confidence * 0.7) + (base_score * (1 - ml_confidence * 0.7))
+                return blended_score
+            
+            else:
+                # No user history - use base prediction
+                return self.predict_productivity_score(time_slot, priority, day)
+        
+        except Exception as e:
+            # Fall back to base prediction if anything goes wrong
+            return self.predict_productivity_score(time_slot, priority, day)
+    
+    def get_user_productivity_fingerprint(self, user) -> Dict:
+        """
+        Get complete user productivity fingerprint (Q5/Q6 Scenario B).
+        Returns peak hours, worst hours, patterns, and exam week adjustments.
+        """
+        try:
+            from api.models import BehaviorHistory
+            
+            behaviors = BehaviorHistory.objects.filter(user=user).order_by('-historical_productivity_score')
+            
+            if not behaviors.exists():
+                return {}
+            
+            peak_hours = [
+                {
+                    'day': b.day_of_week,
+                    'time': str(b.time_slot),
+                    'score': b.historical_productivity_score,
+                    'completion_rate': b.completion_rate
+                }
+                for b in behaviors[:3]
+            ]
+            
+            worst_hours = [
+                {
+                    'day': b.day_of_week,
+                    'time': str(b.time_slot),
+                    'score': b.historical_productivity_score,
+                    'completion_rate': b.completion_rate
+                }
+                for b in behaviors.order_by('historical_productivity_score')[:3]
+            ]
+            
+            # Detect patterns
+            exam_week_slots = behaviors.filter(exam_week_boost=True)
+            weekend_slots = behaviors.filter(day_of_week__in=['Saturday', 'Sunday'])
+            post_shift_slots = behaviors.filter(post_shift_recovery=True)
+            
+            fingerprint = {
+                'peak_productivity_hours': peak_hours,
+                'worst_productivity_hours': worst_hours,
+                'exam_week_boost_detected': exam_week_slots.exists(),
+                'weekend_pattern_detected': weekend_slots.exists() and weekend_slots.aggregate(Avg('historical_productivity_score'))['historical_productivity_score__avg'] > 60,
+                'post_shift_recovery_needed': post_shift_slots.exists(),
+                'total_data_points': behaviors.count(),
+                'avg_ml_confidence': float(behaviors.aggregate(Avg('ml_confidence_score'))['ml_confidence_score__avg'] or 0.5),
+            }
+            
+            return fingerprint
+        
+        except Exception as e:
+            return {}
+    
     def get_model_info(self) -> Dict:
         """Get information about the ML model"""
         return {
