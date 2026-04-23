@@ -717,7 +717,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
               <Sparkles className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent><p>AI Assistant</p></TooltipContent>
+          <TooltipContent><p> Assistant</p></TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
@@ -725,7 +725,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/30 px-4">
           <div className="flex items-center gap-2 rounded-lg bg-white p-4 text-sm font-medium shadow-lg">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700" />
-            Analyzing with AI...
+            Analyzing...
           </div>
         </div>
       )}

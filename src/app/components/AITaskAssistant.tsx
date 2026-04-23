@@ -417,7 +417,7 @@ export function AITaskAssistant({
                   )}
                   {!isAnalyzing && !error && suggestion && (
                     <p className="text-[10px] text-white/70 dark:text-black/70">
-                      Suggestions ready!
+                      Suggestions ready
                     </p>
                   )}
                   {!isAnalyzing && !error && !suggestion && clarifyingQuestions.length > 0 && (
@@ -445,7 +445,7 @@ export function AITaskAssistant({
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Lightbulb className="h-8 w-8 text-muted-foreground/40 mb-2" />
                 <p className="text-xs text-muted-foreground">
-                  Start typing a task title to get AI suggestions
+                  Start typing a task title
                 </p>
               </div>
             ) : isAnalyzing ? (

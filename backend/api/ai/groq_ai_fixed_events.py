@@ -118,7 +118,7 @@ def groq_task_schedule_suggestion_FIXED(task, work_schedules, all_tasks):
     task_due_date = task.get('dueDate', '')
     task_duration = 120  # Default 2 hours
     
-    if task_priority not in ['high', 'medium', 'low']:
+    if task_priority not in ['high', 'medium', 'low', 'urgent', 'critical']:
         task_priority = 'medium'
     
     # Parse due date
@@ -148,16 +148,33 @@ def groq_task_schedule_suggestion_FIXED(task, work_schedules, all_tasks):
     work_schedule_conflicts = []
     
     for schedule in work_schedules:
-        if due_day in schedule.get('work_days', []):
+        work_days = schedule.get('work_days', [])
+        
+        # Check if task due date is on a work day
+        if due_day in work_days:
             schedule_start = schedule.get('start_time', '')
             schedule_end = schedule.get('end_time', '')
             
-            if check_overlap(due_time, task_duration, schedule_start, schedule_end):
+            # Calculate work schedule duration
+            try:
+                start_dt = datetime.strptime(schedule_start, '%H:%M')
+                end_dt = datetime.strptime(schedule_end, '%H:%M')
+                work_duration = int((end_dt - start_dt).total_seconds() / 60)
+            except (ValueError, TypeError):
+                work_duration = 480  # Default 8 hours
+            
+            # Debug: Show what we're checking
+            print(f"[AI] Checking work conflict: {due_day} at {due_time} vs {schedule_start}-{schedule_end} ({work_duration}min)")
+            
+            if check_overlap(due_time, task_duration, schedule_start, work_duration):
+                print(f"[AI] ⚠️ OVERLAP DETECTED: Task {due_time} overlaps with work {schedule_start}-{schedule_end}")
                 work_schedule_conflicts.append({
                     'schedule_title': schedule.get('job_title', 'Work Schedule'),
                     'schedule_start': format_12h(schedule_start),
                     'schedule_end': format_12h(schedule_end),
                 })
+            else:
+                print(f"[AI] ✓ No overlap: Task time and work hours don't conflict")
     
     # ===== CRITICAL LOGIC: Work Schedule Conflict =====
     if work_schedule_conflicts and task_category != 'work':
@@ -218,7 +235,7 @@ def groq_task_schedule_suggestion_FIXED(task, work_schedules, all_tasks):
             
             return {
                 "type": "fixed_event_conflict",
-                "analysis_step": "🔒 FIXED EVENT LOCKED - Work Schedule Conflict",
+                "analysis_step": " FIXED EVENT LOCKED - Work Schedule Conflict",
                 "is_fixed_event": True,
                 "fixed_event_type": fixed_event_type,
                 "fixed_confidence": f"{fixed_confidence:.0%}",
@@ -229,10 +246,10 @@ def groq_task_schedule_suggestion_FIXED(task, work_schedules, all_tasks):
                 "scheduled_time": format_12h(due_time),
                 "suggested_time": format_12h(due_time),  # 🔒 NEVER CHANGE
                 "reason": f"Your {fixed_event_type} '{task_title}' is LOCKED at {format_12h(due_time)} and CANNOT BE RESCHEDULED. It conflicts with your work schedule ({conflict_info['schedule_start']} – {conflict_info['schedule_end']}).",
-                "key_message": f"🔒 {fixed_event_type.upper()} IS FIXED AND UNMOVABLE",
+                "key_message": f" {fixed_event_type.upper()} IS FIXED AND UNMOVABLE",
                 "recommended_actions": recommendations,
                 "work_schedules": work_schedule_summary,
-                "tip": "⚠️ Fixed events stay locked. Your work schedule must adapt around them."
+                "tip": " Fixed events stay locked. Your work schedule must adapt around them."
             }
         else:
             # ❌ FLEXIBLE TASK - OK to reschedule
@@ -307,7 +324,7 @@ def groq_task_schedule_suggestion_FIXED(task, work_schedules, all_tasks):
             # Both are fixed - CRITICAL ERROR
             return {
                 "type": "critical_fixed_conflict",
-                "analysis_step": "🚨 CRITICAL: Two Fixed Events at Same Time",
+                "analysis_step": " CRITICAL: Two Fixed Events at Same Time",
                 "is_fixed_event": True,
                 "fixed_event_type": fixed_event_type,
                 "conflict_with_fixed": fixed_event['title'],
@@ -316,7 +333,7 @@ def groq_task_schedule_suggestion_FIXED(task, work_schedules, all_tasks):
                 "scheduled_time": format_12h(due_time),
                 "suggested_time": format_12h(due_time),
                 "reason": f"IMPOSSIBLE SCHEDULE: Both '{task_title}' and '{fixed_event['title']}' are locked at overlapping times.",
-                "key_message": "🚨 Two unmovable events cannot both be scheduled.",
+                "key_message": " Two unmovable events cannot both be scheduled.",
                 "recommended_actions": [
                     f"Contact organizer of '{fixed_event['title']}' to check if rescheduling is possible",
                     "If not, you must choose which event to attend",
@@ -336,7 +353,7 @@ def groq_task_schedule_suggestion_FIXED(task, work_schedules, all_tasks):
                 "scheduled_time": format_12h(due_time),
                 "suggested_time": "15:00",  # Alternative time
                 "reason": f"Your '{task_title}' conflicts with FIXED EVENT '{fixed_event['title']}' at {format_12h(fixed_event['time'])}. Rescheduling your task.",
-                "tip": "🔒 Fixed events are locked. Your task will be rescheduled."
+                "tip": " Fixed events are locked. Your task will be rescheduled."
             }
     
     # ===== No Major Conflicts =====
@@ -388,5 +405,5 @@ if __name__ == "__main__":
     print("TEST RESULT:")
     print("="*80)
     print(json.dumps(result, indent=2))
-    print("\n✅ EXPECTED: Exam stays at 10:30 AM (LOCKED)")
-    print(f"✅ ACTUAL: Exam at {result['scheduled_time']} (unchanged: {result['suggested_time'] == result['scheduled_time']})")
+    print("\n EXPECTED: Exam stays at 10:30 AM (LOCKED)")
+    print(f" ACTUAL: Exam at {result['scheduled_time']} (unchanged: {result['suggested_time'] == result['scheduled_time']})")
