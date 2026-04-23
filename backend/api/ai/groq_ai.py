@@ -183,10 +183,15 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
             return task_start_min < schedule_end_min and task_end_min > schedule_start_min
     
     def analyze_task_context(title, description):
-        """Analyze task title and description for important context"""
+        """Analyze task title and description for important context with Q1/Q3 enhancements"""
         title_lower = title.lower()
         desc_lower = (description or '').lower()
         combined = f"{title_lower} {desc_lower}"
+        
+        # Q3: Verb phrase analysis for intent extraction
+        has_review_verb = any(word in combined for word in ['review', 'study', 'prepare for', 'read about'])
+        has_attend_verb = any(word in combined for word in ['attend', 'go to', 'participate in', 'join'])
+        has_take_verb = any(word in combined for word in ['take', 'sit for', 'complete'])
         
         context = {
             'is_exam': any(word in combined for word in ['exam', 'test', 'quiz', 'midterm', 'final']),
@@ -198,32 +203,99 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
             'is_project': any(word in combined for word in ['project', 'assignment', 'homework', 'essay']),
             'is_workout': any(word in combined for word in ['workout', 'exercise', 'gym', 'fitness']),
             'is_social': any(word in combined for word in ['hangout', 'dinner', 'lunch', 'coffee', 'date']),
+            # Q1: Professional significance detection
+            'is_boss_birthday': any(word in combined for word in ['boss', 'manager', 'supervisor', 'director']) and any(word in combined for word in ['birthday', 'bday']),
+            'is_thesis_defense': any(word in combined for word in ['thesis', 'dissertation', 'defense', 'defence', 'capstone']),
+            # Q3: Distinguish "review meeting notes" from "attend meeting"
+            'is_meeting_prep': has_review_verb and 'meeting' in combined and not has_attend_verb,
+            'is_exam_prep': (has_review_verb or 'practice' in combined) and context.get('is_exam', False) and not has_take_verb,
         }
         
+        # Q3: Confidence scoring for ambiguous inputs
+        confidence_score = 1.0
+        if len(combined.split()) < 3:  # Very short input
+            confidence_score = 0.4
+        elif not any(context.values()):
+            confidence_score = 0.5
+        
+        # Q1 Scenario A: Boss's birthday - professionally significant
+        if context['is_boss_birthday']:
+            return {
+                'should_be_fixed': True,
+                'message': 'Boss\'s birthday detected - Professionally significant social obligation',
+                'professional_significance': 'high',
+                'suggestion': 'Consider attending both by negotiating a partial shift with your employer',
+                'confidence': confidence_score
+            }
+        
+        # Q1 Scenario B: Thesis defense - once-in-a-semester milestone
+        if context['is_thesis_defense']:
+            return {
+                'should_be_fixed': True,
+                'message': 'Thesis defense detected - Once-in-a-semester academic milestone (non-negotiable)',
+                'milestone_type': 'academic_critical',
+                'override_work': True,
+                'draft_leave_request': True,
+                'confidence': confidence_score
+            }
+        
+        # Q3 Scenario A: "Review meeting notes" - follow-up task, not live meeting
+        if context['is_meeting_prep']:
+            return {
+                'should_be_fixed': False,
+                'message': 'Meeting preparation detected - Follow-up task (flexible)',
+                'task_type': 'preparation',
+                'suggested_duration': 30,
+                'confidence': confidence_score
+            }
+        
+        # Q3 Scenario C: "Exam practice" vs "Take exam"
+        if context['is_exam_prep']:
+            return {
+                'should_be_fixed': False,
+                'message': 'Exam preparation detected - Flexible study session',
+                'task_type': 'preparation',
+                'add_buffer': False,
+                'confidence': confidence_score
+            }
+        
         # Determine if this should be auto-marked as fixed
-        should_be_fixed = context['is_exam'] or context['is_meeting'] or context['is_birthday'] or context['is_presentation']
+        should_be_fixed = (context['is_exam'] and has_take_verb) or context['is_meeting'] or context['is_birthday'] or context['is_presentation']
+        
+        # Q3: Add 30-min buffer before fixed events
+        add_buffer = should_be_fixed and (context['is_exam'] or context['is_presentation'])
         
         # Generate context-aware message
-        if context['is_exam']:
-            return {'should_be_fixed': should_be_fixed, 'message': '📝 Exam detected - This is a critical fixed-time event'}
+        if context['is_exam'] and has_take_verb:
+            return {'should_be_fixed': should_be_fixed, 'message': 'Exam detected - This is a critical fixed-time event', 'add_buffer': add_buffer, 'confidence': confidence_score}
         elif context['is_meeting']:
-            return {'should_be_fixed': should_be_fixed, 'message': '🤝 Meeting/Appointment detected - Fixed time commitment'}
+            return {'should_be_fixed': should_be_fixed, 'message': 'Meeting/Appointment detected - Fixed time commitment', 'add_buffer': False, 'confidence': confidence_score}
         elif context['is_birthday']:
-            return {'should_be_fixed': should_be_fixed, 'message': '🎂 Birthday/Celebration detected - Fixed event'}
+            return {'should_be_fixed': should_be_fixed, 'message': 'Birthday/Celebration detected - Fixed event', 'add_buffer': False, 'confidence': confidence_score}
         elif context['is_presentation']:
-            return {'should_be_fixed': should_be_fixed, 'message': '🎤 Presentation detected - Fixed time event'}
+            return {'should_be_fixed': should_be_fixed, 'message': 'Presentation detected - Fixed time event', 'add_buffer': add_buffer, 'confidence': confidence_score}
         elif context['is_deadline']:
-            return {'should_be_fixed': False, 'message': '⏰ Deadline detected - Plan ahead to avoid last-minute stress'}
+            return {'should_be_fixed': False, 'message': 'Deadline detected - Plan ahead to avoid last-minute stress', 'confidence': confidence_score}
         elif context['is_study']:
-            return {'should_be_fixed': False, 'message': '📚 Study session - Flexible timing recommended'}
+            return {'should_be_fixed': False, 'message': 'Study session - Flexible timing recommended', 'confidence': confidence_score}
         elif context['is_project']:
-            return {'should_be_fixed': False, 'message': '💼 Project work - Break into smaller sessions if needed'}
+            return {'should_be_fixed': False, 'message': 'Project work - Break into smaller sessions if needed', 'confidence': confidence_score}
         elif context['is_workout']:
-            return {'should_be_fixed': False, 'message': '💪 Workout - Morning or evening slots work best'}
+            return {'should_be_fixed': False, 'message': 'Workout - Morning or evening slots work best', 'confidence': confidence_score}
         elif context['is_social']:
-            return {'should_be_fixed': False, 'message': '👥 Social event - Consider your energy levels'}
+            return {'should_be_fixed': False, 'message': 'Social event - Consider your energy levels', 'confidence': confidence_score}
         
-        return {'should_be_fixed': False, 'message': ''}
+        # Q3 Scenario B: Low confidence - need clarification
+        if confidence_score < 0.6:
+            return {
+                'should_be_fixed': False,
+                'message': '',
+                'confidence': confidence_score,
+                'needs_clarification': True,
+                'clarification_question': 'Is this a meeting, a social event, or a task preparation?'
+            }
+        
+        return {'should_be_fixed': False, 'message': '', 'confidence': confidence_score}
     
     task_title = task.get('title', 'Task')
     task_description = task.get('description', '')
@@ -311,11 +383,10 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
                 else:
                     task_conflicts.append(conflict_data)
 
-    # If conflict with FIXED event - must reschedule the new task
+    # If conflict with FIXED event - check if NEW task is also fixed
     if fixed_event_conflicts:
         fixed_event = fixed_event_conflicts[0]
         context_prefix = f"{context_message} " if context_message else ""
-        analysis = f"{context_prefix}FIXED EVENT CONFLICT: Your '{task_title}' conflicts with FIXED EVENT '{fixed_event['title']}' at {format_12h(fixed_event['time'])}. This event cannot be moved."
         
         # Build work schedule summary for context
         work_schedule_summary = []
@@ -326,6 +397,34 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
                     'start_time': format_12h(schedule.get('start_time', '')),
                     'end_time': format_12h(schedule.get('end_time', '')),
                 })
+        
+        # CRITICAL: If the NEW task is ALSO a fixed event (exam, meeting, birthday)
+        # Then KEEP original time and warn about conflict
+        if task_context.get('should_be_fixed', False):
+            analysis = f"{context_prefix}This is a fixed, non-adjustable event and cannot be rescheduled. However, it conflicts with '{fixed_event['title']}' at {format_12h(fixed_event['time'])}."
+            
+            return {
+                "type": "fixed_vs_fixed_conflict",
+                "analysis_step": "CRITICAL: Two Fixed Events Conflict",
+                "conflict_with_fixed": fixed_event['title'],
+                "conflict_time": format_12h(fixed_event['time']),
+                "task": task_title,
+                "priority": task_priority,
+                "scheduled_time": format_12h(due_time),
+                "suggested_time": due_time,  # KEEP ORIGINAL TIME
+                "reason": analysis + " Both events are fixed and cannot be moved. You may need to choose which one to attend or find a way to attend both.",
+                "estimated_duration": "1-2 hours",
+                "work_schedules": work_schedule_summary,
+                "tip": "⚠️ CRITICAL: Both events are fixed and cannot be rescheduled. Consider:
+• Requesting schedule changes from organizers
+• Partial attendance if possible
+• Prioritizing based on importance",
+                "context_detected": context_message,
+                "should_mark_fixed": True
+            }
+        
+        # If NEW task is flexible, reschedule it to avoid fixed event
+        analysis = f"{context_prefix}FIXED EVENT CONFLICT: Your '{task_title}' conflicts with FIXED EVENT '{fixed_event['title']}' at {format_12h(fixed_event['time'])}. This event cannot be moved."
         
         # Find alternative time avoiding ALL fixed events
         alternative_time = _find_alternative_avoiding_fixed(due_day, fixed_event_conflicts, all_tasks, task_priority)
@@ -417,10 +516,6 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
         conflict_info = work_schedule_conflicts[0]
         context_prefix = f"{context_message} " if context_message else ""
         
-        # Build detailed work schedule awareness message
-        work_details = f"WORK SCHEDULE CONFLICT: Your '{task_title}' at {format_12h(due_time)} conflicts with '{conflict_info['schedule_title']}' ({conflict_info['schedule_start']} - {conflict_info['schedule_end']})."
-        analysis = f"{context_prefix}{work_details} You are scheduled to work during this time and cannot complete academic tasks."
-        
         # Build work schedule summary (show all for context)
         work_schedule_summary = []
         for schedule in work_schedules:
@@ -430,6 +525,32 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
                     'start_time': format_12h(schedule.get('start_time', '')),
                     'end_time': format_12h(schedule.get('end_time', '')),
                 })
+        
+        # CRITICAL: If task is FIXED (exam, meeting, birthday), KEEP original time
+        if task_context.get('should_be_fixed', False):
+            work_details = f"WORK SCHEDULE CONFLICT: Your '{task_title}' at {format_12h(due_time)} conflicts with '{conflict_info['schedule_title']}' ({conflict_info['schedule_start']} - {conflict_info['schedule_end']})."
+            analysis = f"{context_prefix}{work_details} However, this is a fixed, non-adjustable event and cannot be rescheduled."
+            
+            return {
+                "type": "fixed_vs_work_conflict",
+                "analysis_step": "Fixed Event Conflicts with Work Schedule",
+                "conflict_with": conflict_info['schedule_title'],
+                "work_schedule_time": f"{conflict_info['schedule_start']} - {conflict_info['schedule_end']}",
+                "task": task_title,
+                "priority": task_priority,
+                "scheduled_time": format_12h(due_time),
+                "suggested_time": due_time,  # KEEP ORIGINAL TIME
+                "reason": analysis + " Recommended actions:\n• Request leave or shift adjustment\n• Notify employer in advance\n• Prioritize this event (cannot be rescheduled)",
+                "estimated_duration": "1-2 hours",
+                "work_schedules": work_schedule_summary,
+                "tip": "⚠️ This event cannot be rescheduled. You may need to adjust your work schedule.",
+                "work_conflict_details": f"You work {conflict_info['schedule_start']}-{conflict_info['schedule_end']} on {due_day}s",
+                "should_mark_fixed": True
+            }
+        
+        # If task is flexible, reschedule to avoid work
+        work_details = f"WORK SCHEDULE CONFLICT: Your '{task_title}' at {format_12h(due_time)} conflicts with '{conflict_info['schedule_title']}' ({conflict_info['schedule_start']} - {conflict_info['schedule_end']})."
+        analysis = f"{context_prefix}{work_details} You are scheduled to work during this time and cannot complete academic tasks."
         
         # Find time that avoids work schedule
         alternative = _find_alternative_avoiding_work(due_day, work_schedules, task_priority)

@@ -12,6 +12,8 @@ from .greedy_scheduler import GreedyScheduler
 from .genetic_scheduler import GeneticScheduler
 from .ml_predictor import ProductivityPredictor
 from .fixed_event_handler import FixedEventHandler
+from .conflict_resolver import ConflictResolver
+from .contextual_reasoner import ContextualReasoner
 
 
 class UnifiedAIOptimizer:
@@ -36,6 +38,8 @@ class UnifiedAIOptimizer:
         )
         self.ml_predictor = ProductivityPredictor()
         self.fixed_event_handler = FixedEventHandler()
+        self.conflict_resolver = ConflictResolver()  # Q1, Q2, Q7, Q8
+        self.contextual_reasoner = ContextualReasoner()  # Q4
         
         # Performance tracking
         self.optimization_history = []
