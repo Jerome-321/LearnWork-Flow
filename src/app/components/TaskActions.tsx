@@ -153,7 +153,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
             ...aiData,
             suggested_time: aiData.suggested_time || formData.dueTime || "18:00",
             priority: aiData.priority || formData.priority,
-            reason: aiData.reason || "AI detected a scheduling conflict.",
+            reason: aiData.reason || "Schedule conflict detected.",
           });
           
           // Store pending update
@@ -333,8 +333,8 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
           suggested_time: formData.dueTime || "18:00",
           priority: formData.priority,
           reason: response.ok
-            ? "AI did not return a recommendation, review your schedule."
-            : "AI service unavailable; please confirm your task setup.",
+            ? "No recommendation available, review your schedule."
+            : "Service unavailable; please confirm your task setup.",
           estimated_duration: "1–2 hours",
         });
       } else {
@@ -342,7 +342,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
           ...aiData,
           suggested_time: aiData.suggested_time || formData.dueTime || "18:00",
           priority: aiData.priority || formData.priority,
-          reason: aiData.reason || "AI completed analysis.",
+          reason: aiData.reason || "Analysis completed.",
         });
       }
 
@@ -350,7 +350,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
       setShowAiModal(true);
     } catch (err) {
       console.error("Error during AI flow:", err);
-      toast.info("Creating task without AI analysis...");
+      toast.info("Creating task without schedule analysis...");
       try {
         await saveTask(taskPayload);
       } catch (saveErr) {
@@ -397,7 +397,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
 
   const handleAIModalAccept = async () => {
     if (!aiSuggestion || !pendingTaskPayload) {
-      toast.error("No AI suggestion available");
+      toast.error("No suggestion available");
       return;
     }
     const suggestedTime = aiSuggestion.suggested_time || formData.dueTime;
@@ -413,7 +413,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
       // Updating existing task
       try {
         await updateTask(task.id, finalPayload);
-        toast.success("Task updated with AI suggestion applied");
+        toast.success("Task updated with suggestion applied");
         setIsEditing(false);
       } catch (err) {
         toast.error("Failed to update task");
@@ -426,7 +426,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
       // Creating new task
       try {
         await addTask(finalPayload, true);
-        toast.success("Task created with AI suggestion applied");
+        toast.success("Task created with suggestion applied");
       } catch (err) {
         toast.error("Failed to create task");
       } finally {
@@ -475,7 +475,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
           <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/30 px-4">
             <div className="flex items-center gap-2 rounded-lg bg-white p-4 text-sm font-medium shadow-lg">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700" />
-              Analyzing with AI...
+              Analyzing schedule...
             </div>
           </div>
         )}
