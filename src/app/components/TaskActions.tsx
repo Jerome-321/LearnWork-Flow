@@ -731,22 +731,148 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
       )}
 
       <Dialog open={showAiModal} onOpenChange={setShowAiModal}>
-        <DialogContent className="max-w-md p-6">
+        <DialogContent className="max-w-md p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader className="mb-4">
-            <DialogTitle className="text-xl font-bold">Scheduling Suggestion</DialogTitle>
+            <DialogTitle className="text-xl font-bold">
+              {aiSuggestion?.type === 'fixed_vs_work_conflict' ? '⚠️ Fixed Event Conflict' :
+               aiSuggestion?.type === 'fixed_vs_fixed_conflict' ? '🚨 Critical Conflict' :
+               'Scheduling Suggestion'}
+            </DialogTitle>
           </DialogHeader>
           {aiSuggestion && (
             <div className="space-y-4">
+              {/* Q4: Urgency Upgrade Banner */}
+              {aiSuggestion.urgency_upgrade && (
+                <div className="bg-orange-50 border-l-4 border-orange-500 p-3 rounded">
+                  <div className="flex items-center gap-2">
+                    <span className="text-orange-600 font-semibold">⚡ Priority Upgraded</span>
+                  </div>
+                  <p className="text-sm text-gray-700 mt-1">
+                    {aiSuggestion.original_priority} → {aiSuggestion.new_priority} (Deadline approaching)
+                  </p>
+                </div>
+              )}
+
+              {/* Q1: Professional Significance Banner */}
+              {aiSuggestion.professional_significance === 'high' && (
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-600 font-semibold">💼 Professionally Significant</span>
+                  </div>
+                  <p className="text-sm text-gray-700 mt-1">
+                    This event has high professional importance
+                  </p>
+                </div>
+              )}
+
+              {/* Q3: Context Detection */}
+              {aiSuggestion.context_detected && (
+                <div className="bg-purple-50 border-l-4 border-purple-500 p-3 rounded">
+                  <p className="text-sm text-purple-700">{aiSuggestion.context_detected}</p>
+                </div>
+              )}
+
+              {/* Main Suggestion */}
               <div className="border-b pb-3">
                 <div className="text-sm font-semibold text-gray-600 mb-1">Suggested Time:</div>
                 <div className="text-2xl font-bold text-gray-900">
                   {formatDueDate(formData.dueDate)} at {formatTime12Hour(aiSuggestion.suggested_time || "18:00")}
+                  {aiSuggestion.type === 'fixed_vs_work_conflict' && (
+                    <span className="text-sm font-normal text-gray-600 ml-2">(UNCHANGED)</span>
+                  )}
                 </div>
               </div>
+
+              {/* Q2: Deadline Impact Warning */}
+              {aiSuggestion.deadline_impact && (
+                <div className={`border-l-4 p-3 rounded ${
+                  aiSuggestion.deadline_impact.severity === 'critical' ? 'bg-red-50 border-red-500' :
+                  aiSuggestion.deadline_impact.severity === 'high' ? 'bg-orange-50 border-orange-500' :
+                  'bg-yellow-50 border-yellow-500'
+                }`}>
+                  <div className="font-semibold text-sm mb-1">
+                    ⏰ Deadline Impact: {aiSuggestion.deadline_impact.hours_until_deadline.toFixed(1)} hours remaining
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    Free hours if you proceed: {aiSuggestion.deadline_impact.free_hours_if_proceed.toFixed(1)} hours
+                  </p>
+                </div>
+              )}
+
+              {/* Reason/Details */}
               {aiSuggestion.reason && (
                 <div>
                   <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Details</div>
-                  <div className="text-sm text-gray-700">{cleanReason(aiSuggestion.reason)}</div>
+                  <div className="text-sm text-gray-700 whitespace-pre-line">{cleanReason(aiSuggestion.reason)}</div>
+                </div>
+              )}
+
+              {/* Q1: Leave Request Draft */}
+              {aiSuggestion.leave_request_draft && (
+                <div className="bg-gray-50 border rounded p-3">
+                  <div className="text-xs font-semibold text-gray-600 uppercase mb-2">📧 Leave Request Draft</div>
+                  <div className="text-xs text-gray-700 whitespace-pre-line font-mono bg-white p-2 rounded border max-h-40 overflow-y-auto">
+                    {aiSuggestion.leave_request_draft}
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="mt-2 w-full"
+                    onClick={() => {
+                      navigator.clipboard.writeText(aiSuggestion.leave_request_draft);
+                      toast.success('Leave request copied to clipboard');
+                    }}
+                  >
+                    📋 Copy to Clipboard
+                  </Button>
+                </div>
+              )}
+
+              {/* Q8: Multiple Resolution Options */}
+              {aiSuggestion.resolution_options && aiSuggestion.resolution_options.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold text-gray-600 uppercase mb-2">Resolution Options</div>
+                  {aiSuggestion.resolution_options.map((option: any, idx: number) => (
+                    <div key={idx} className="border rounded p-3 hover:bg-gray-50 cursor-pointer transition">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="font-semibold text-sm">Option {option.option}: {option.action}</div>
+                        <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                          {option.feasibility_score}% feasible
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-600 space-y-1">
+                        <div>✅ Preserves: {option.preserves}</div>
+                        <div>❌ Sacrifices: {option.sacrifices}</div>
+                        {option.emotional_impact && (
+                          <div>💭 Emotional: {option.emotional_impact}</div>
+                        )}
+                        {option.income_impact && (
+                          <div>💰 Income: {option.income_impact}</div>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-700 mt-2 italic">{option.trade_off}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Q3: Clarification Question */}
+              {aiSuggestion.needs_clarification && aiSuggestion.clarification_question && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded">
+                  <div className="font-semibold text-sm mb-1">❓ Need More Information</div>
+                  <p className="text-sm text-gray-700">{aiSuggestion.clarification_question}</p>
+                </div>
+              )}
+
+              {/* Q5: Productivity Score */}
+              {aiSuggestion.productivity_score && (
+                <div className="bg-green-50 border rounded p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-700">📊 Productivity Score</span>
+                    <span className="text-lg font-bold text-green-600">
+                      {Math.round(aiSuggestion.productivity_score * 100)}%
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
