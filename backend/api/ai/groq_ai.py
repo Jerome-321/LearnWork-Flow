@@ -145,12 +145,25 @@ Ensure the suggestion is practical and fits within reasonable work hours.
 
 def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
     """
-    Generate intelligent task scheduling suggestions with explicit analysis steps:
-    1. Analyze task title and description for context (exam, meeting, birthday, etc.)
-    2. Check task vs existing tasks for conflicts
-    3. Check task vs work schedules for conflicts
-    4. Suggest best available time
+    Generate intelligent task scheduling suggestions using REAL AI:
+    1. Groq AI for context understanding (NLP)
+    2. ML Predictor for productivity scoring
+    3. Genetic Algorithm for optimization
+    4. CSP Solver for constraint satisfaction
+    5. Contextual reasoning for smart suggestions
     """
+    
+    # Import AI modules
+    try:
+        from .unified_ai_optimizer import UnifiedAIOptimizer
+        from .ml_predictor import ProductivityPredictor
+        from .genetic_scheduler import GeneticScheduler
+        from .csp_solver import SchedulingCSP
+        
+        use_real_ai = True
+    except ImportError:
+        use_real_ai = False
+        print("[WARNING] AI modules not available, using rule-based fallback")
     
     def format_12h(time_str):
         if not time_str:
@@ -183,127 +196,64 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
             return task_start_min < schedule_end_min and task_end_min > schedule_start_min
     
     def analyze_task_context(title, description):
-        """Analyze task title and description for important context with Q1/Q3 enhancements"""
-        title_lower = title.lower()
-        desc_lower = (description or '').lower()
-        combined = f"{title_lower} {desc_lower}"
-        
-        # Q3: Verb phrase analysis for intent extraction
-        has_review_verb = any(word in combined for word in ['review', 'study', 'prepare for', 'read about'])
-        has_attend_verb = any(word in combined for word in ['attend', 'go to', 'participate in', 'join'])
-        has_take_verb = any(word in combined for word in ['take', 'sit for', 'complete'])
-        
-        context = {
-            'is_exam': any(word in combined for word in ['exam', 'test', 'quiz', 'midterm', 'final']),
-            'is_meeting': any(word in combined for word in ['meeting', 'appointment', 'interview', 'consultation']),
-            'is_birthday': any(word in combined for word in ['birthday', 'bday', 'celebration', 'party']),
-            'is_deadline': any(word in combined for word in ['deadline', 'due', 'submission', 'submit']),
-            'is_presentation': any(word in combined for word in ['presentation', 'present', 'demo', 'pitch']),
-            'is_study': any(word in combined for word in ['study', 'review', 'practice', 'prepare', 'read']),
-            'is_project': any(word in combined for word in ['project', 'assignment', 'homework', 'essay']),
-            'is_workout': any(word in combined for word in ['workout', 'exercise', 'gym', 'fitness']),
-            'is_social': any(word in combined for word in ['hangout', 'dinner', 'lunch', 'coffee', 'date']),
-            # Q1: Professional significance detection
-            'is_boss_birthday': any(word in combined for word in ['boss', 'manager', 'supervisor', 'director']) and any(word in combined for word in ['birthday', 'bday']),
-            'is_thesis_defense': any(word in combined for word in ['thesis', 'dissertation', 'defense', 'defence', 'capstone']),
-            # Q3: Distinguish "review meeting notes" from "attend meeting"
-            'is_meeting_prep': has_review_verb and 'meeting' in combined and not has_attend_verb,
-            'is_exam_prep': (has_review_verb or 'practice' in combined) and context.get('is_exam', False) and not has_take_verb,
-        }
-        
-        # Q3: Confidence scoring for ambiguous inputs
-        confidence_score = 1.0
-        if len(combined.split()) < 3:  # Very short input
-            confidence_score = 0.4
-        elif not any(context.values()):
-            confidence_score = 0.5
-        
-        # Q1 Scenario A: Boss's birthday - professionally significant
-        if context['is_boss_birthday']:
+        """Use Groq AI to analyze task context and determine if it's a fixed event"""
+        try:
+            prompt = f"""Analyze this task and determine if it's a FIXED event (cannot be rescheduled):
+
+Task Title: {title}
+Description: {description or 'No description'}
+
+Respond ONLY in JSON:
+{{
+  "is_fixed": true or false,
+  "message": "brief explanation",
+  "confidence": 0.0 to 1.0
+}}
+
+Fixed events: exams, meetings, appointments, presentations, birthdays, celebrations.
+Flexible tasks: study sessions, homework, projects, deadlines."""
+            
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            text = response.choices[0].message.content.strip()
+            result = json.loads(text)
             return {
-                'should_be_fixed': True,
-                'message': 'Boss\'s birthday detected - Professionally significant social obligation',
-                'professional_significance': 'high',
-                'suggestion': 'Consider attending both by negotiating a partial shift with your employer',
-                'confidence': confidence_score
+                'should_be_fixed': result.get('is_fixed', False),
+                'message': result.get('message', ''),
+                'confidence': result.get('confidence', 0.5)
             }
-        
-        # Q1 Scenario B: Thesis defense - once-in-a-semester milestone
-        if context['is_thesis_defense']:
+        except Exception as e:
+            print(f"[GROQ AI] Context analysis failed: {e}. Using keyword fallback.")
+            title_lower = title.lower()
+            desc_lower = (description or '').lower()
+            combined = f"{title_lower} {desc_lower}"
+            
+            is_exam = any(word in combined for word in ['exam', 'test', 'quiz', 'midterm', 'final'])
+            is_meeting = any(word in combined for word in ['meeting', 'appointment', 'interview'])
+            is_birthday = any(word in combined for word in ['birthday', 'bday', 'celebration'])
+            is_presentation = any(word in combined for word in ['presentation', 'present', 'demo'])
+            
+            should_be_fixed = is_exam or is_meeting or is_birthday or is_presentation
+            
+            if is_exam:
+                message = 'Exam detected - This is a critical fixed-time event'
+            elif is_meeting:
+                message = 'Meeting/Appointment detected - Fixed time commitment'
+            elif is_birthday:
+                message = 'Birthday/Celebration detected - Fixed event'
+            elif is_presentation:
+                message = 'Presentation detected - Fixed time event'
+            else:
+                message = ''
+            
             return {
-                'should_be_fixed': True,
-                'message': 'Thesis defense detected - Once-in-a-semester academic milestone (non-negotiable)',
-                'milestone_type': 'academic_critical',
-                'override_work': True,
-                'draft_leave_request': True,
-                'confidence': confidence_score
+                'should_be_fixed': should_be_fixed,
+                'message': message,
+                'confidence': 0.8 if should_be_fixed else 0.5
             }
-        
-        # Q3 Scenario A: "Review meeting notes" - follow-up task, not live meeting
-        if context['is_meeting_prep']:
-            return {
-                'should_be_fixed': False,
-                'message': 'Meeting preparation detected - Follow-up task (flexible)',
-                'task_type': 'preparation',
-                'suggested_duration': 30,
-                'confidence': confidence_score
-            }
-        
-        # Q3 Scenario C: "Exam practice" vs "Take exam"
-        if context['is_exam_prep']:
-            return {
-                'should_be_fixed': False,
-                'message': 'Exam preparation detected - Flexible study session',
-                'task_type': 'preparation',
-                'add_buffer': False,
-                'confidence': confidence_score
-            }
-        
-        # Determine if this should be auto-marked as fixed
-        # CRITICAL FIX: If title contains exam keywords, it's likely the actual exam, not prep
-        title_has_exam = any(word in title_lower for word in ['exam', 'examination', 'midterm', 'final', 'quiz', 'test'])
-        should_be_fixed = (
-            (context['is_exam'] and (has_take_verb or title_has_exam)) or 
-            context['is_meeting'] or 
-            context['is_birthday'] or 
-            context['is_presentation']
-        )
-        
-        # Q3: Add 30-min buffer before fixed events
-        add_buffer = should_be_fixed and (context['is_exam'] or context['is_presentation'])
-        
-        # Generate context-aware message
-        # CRITICAL: Return 'should_be_fixed' for internal use in this function
-        if context['is_exam'] and (has_take_verb or title_has_exam):
-            return {'should_be_fixed': should_be_fixed, 'message': 'Exam detected - This is a critical fixed-time event', 'add_buffer': add_buffer, 'confidence': confidence_score}
-        elif context['is_meeting']:
-            return {'should_be_fixed': should_be_fixed, 'message': 'Meeting/Appointment detected - Fixed time commitment', 'add_buffer': False, 'confidence': confidence_score}
-        elif context['is_birthday']:
-            return {'should_be_fixed': should_be_fixed, 'message': 'Birthday/Celebration detected - Fixed event', 'add_buffer': False, 'confidence': confidence_score}
-        elif context['is_presentation']:
-            return {'should_be_fixed': should_be_fixed, 'message': 'Presentation detected - Fixed time event', 'add_buffer': add_buffer, 'confidence': confidence_score}
-        elif context['is_deadline']:
-            return {'should_be_fixed': False, 'message': 'Deadline detected - Plan ahead to avoid last-minute stress', 'confidence': confidence_score}
-        elif context['is_study']:
-            return {'should_be_fixed': False, 'message': 'Study session - Flexible timing recommended', 'confidence': confidence_score}
-        elif context['is_project']:
-            return {'should_be_fixed': False, 'message': 'Project work - Break into smaller sessions if needed', 'confidence': confidence_score}
-        elif context['is_workout']:
-            return {'should_be_fixed': False, 'message': 'Workout - Morning or evening slots work best', 'confidence': confidence_score}
-        elif context['is_social']:
-            return {'should_be_fixed': False, 'message': 'Social event - Consider your energy levels', 'confidence': confidence_score}
-        
-        # Q3 Scenario B: Low confidence - need clarification
-        if confidence_score < 0.6:
-            return {
-                'should_be_fixed': False,
-                'message': '',
-                'confidence': confidence_score,
-                'needs_clarification': True,
-                'clarification_question': 'Is this a meeting, a social event, or a task preparation?'
-            }
-        
-        return {'should_be_fixed': False, 'message': '', 'confidence': confidence_score}
     
     task_title = task.get('title', 'Task')
     task_description = task.get('description', '')

@@ -255,7 +255,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         
         # Get all user tasks for context
         all_tasks = list(Task.objects.filter(user=user).values(
-            'id', 'title', 'dueDate', 'priority', 'category'
+            'id', 'title', 'dueDate', 'priority', 'category', 'is_fixed'
         ))
         
         # Convert datetime objects to ISO strings
