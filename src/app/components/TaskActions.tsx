@@ -367,11 +367,17 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
       return;
     }
     
+    // Q1/Q3: Even if user declines suggestion, still mark as fixed if AI detected it
+    const finalPayload = {
+      ...pendingTaskPayload,
+      is_fixed: aiSuggestion?.should_mark_fixed || false,
+    };
+    
     // Check if we're updating or creating
     if (task) {
       // Updating existing task - use original values
       try {
-        await updateTask(task.id, pendingTaskPayload);
+        await updateTask(task.id, finalPayload);
         toast.success("Task updated with your original settings");
         setShowAiModal(false);
         setAiSuggestion(null);
@@ -383,7 +389,7 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
     } else {
       // Creating new task
       try {
-        await addTask(pendingTaskPayload, true);
+        await addTask(finalPayload, true);
         toast.success("Task created with your original settings");
         setShowAiModal(false);
         setAiSuggestion(null);
@@ -406,6 +412,8 @@ export function TaskActions({ task, onClose, open: externalOpen, onOpenChange }:
       ...pendingTaskPayload,
       dueDate: `${formData.dueDate}T${suggestedTime}:00`,
       priority: suggestedPriority,
+      // Q1/Q3: Auto-mark as fixed if AI detected it (exam, meeting, birthday, etc.)
+      is_fixed: aiSuggestion.should_mark_fixed || false,
     };
     
     // Check if we're updating or creating

@@ -260,7 +260,14 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
             }
         
         # Determine if this should be auto-marked as fixed
-        should_be_fixed = (context['is_exam'] and has_take_verb) or context['is_meeting'] or context['is_birthday'] or context['is_presentation']
+        # CRITICAL FIX: If title contains exam keywords, it's likely the actual exam, not prep
+        title_has_exam = any(word in title_lower for word in ['exam', 'examination', 'midterm', 'final', 'quiz', 'test'])
+        should_be_fixed = (
+            (context['is_exam'] and (has_take_verb or title_has_exam)) or 
+            context['is_meeting'] or 
+            context['is_birthday'] or 
+            context['is_presentation']
+        )
         
         # Q3: Add 30-min buffer before fixed events
         add_buffer = should_be_fixed and (context['is_exam'] or context['is_presentation'])
