@@ -614,6 +614,37 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
         }
     
     # ===== STEP 4: No conflicts and no other tasks - suggest best time =====
+    # CRITICAL FIX: If task is FIXED (exam, meeting, birthday), KEEP original time
+    if task_context.get('should_be_fixed', False):
+        # Build work schedule summary
+        work_schedule_summary = []
+        for schedule in work_schedules:
+            if due_day in schedule.get('work_days', []):
+                work_schedule_summary.append({
+                    'job_title': schedule.get('job_title', 'Work Schedule'),
+                    'start_time': format_12h(schedule.get('start_time', '')),
+                    'end_time': format_12h(schedule.get('end_time', '')),
+                })
+        
+        context_prefix = f"{context_message} " if context_message else ""
+        analysis = f"{context_prefix}✅ Clear Schedule: No conflicts detected. Your schedule looks good for this task!"
+        
+        return {
+            "type": "suggestion",
+            "analysis_step": "No Conflicts - Fixed Event Confirmed",
+            "task": task_title,
+            "priority": task_priority,
+            "scheduled_time": format_12h(due_time),
+            "suggested_time": due_time,  # KEEP ORIGINAL TIME FOR FIXED EVENTS
+            "reason": analysis + " This is a fixed-time event and will remain at your scheduled time.",
+            "estimated_duration": "1–2 hours",
+            "work_schedules": work_schedule_summary,
+            "context_detected": context_message,
+            "should_mark_fixed": True,
+            "tip": "✅ Fixed event confirmed at your scheduled time"
+        }
+    
+    # For flexible tasks, suggest optimal time
     best_slot = _find_best_slot(due_day, work_schedule_conflicts, task_priority, work_schedules)
     
     # Build work schedule summary
@@ -639,6 +670,7 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
         "estimated_duration": "1–2 hours",
         "work_schedules": work_schedule_summary,
         "current_time": format_12h(due_time),
+        "should_mark_fixed": False,
         "tip": _get_productivity_tip(task_priority)
     }
 
