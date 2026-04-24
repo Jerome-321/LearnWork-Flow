@@ -273,7 +273,8 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
         add_buffer = should_be_fixed and (context['is_exam'] or context['is_presentation'])
         
         # Generate context-aware message
-        if context['is_exam'] and has_take_verb:
+        # CRITICAL: Return 'should_be_fixed' for internal use in this function
+        if context['is_exam'] and (has_take_verb or title_has_exam):
             return {'should_be_fixed': should_be_fixed, 'message': 'Exam detected - This is a critical fixed-time event', 'add_buffer': add_buffer, 'confidence': confidence_score}
         elif context['is_meeting']:
             return {'should_be_fixed': should_be_fixed, 'message': 'Meeting/Appointment detected - Fixed time commitment', 'add_buffer': False, 'confidence': confidence_score}
