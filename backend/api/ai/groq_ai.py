@@ -415,10 +415,7 @@ def groq_task_schedule_suggestion(task, work_schedules, all_tasks):
                 "reason": analysis + " Both events are fixed and cannot be moved. You may need to choose which one to attend or find a way to attend both.",
                 "estimated_duration": "1-2 hours",
                 "work_schedules": work_schedule_summary,
-                "tip": "⚠️ CRITICAL: Both events are fixed and cannot be rescheduled. Consider:
-• Requesting schedule changes from organizers
-• Partial attendance if possible
-• Prioritizing based on importance",
+                "tip": "⚠️ CRITICAL: Both events are fixed and cannot be rescheduled. Consider: (1) Requesting schedule changes from organizers, (2) Partial attendance if possible, (3) Prioritizing based on importance",
                 "context_detected": context_message,
                 "should_mark_fixed": True
             }
