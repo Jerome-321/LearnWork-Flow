@@ -215,7 +215,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setHasCompletedSchedule(false);
     
     // Force reload to clear all state
-    window.location.href = '/login';
+    window.location.href = '/';
   };
 
   const refreshSession = async () => {
